@@ -70,8 +70,8 @@ class Preprocess:
 
     def __feature_engineering(self, df):
         self.args.USERID_COLUMN = ['userID']
-        self.args.FEAT_COLUMN = ['elapsed','class']
-        self.args.EXCLUDE_COLUMN = ['assessmentItemID', 'testId', 'Timestamp', 'KnowledgeTag']
+        self.args.FEAT_COLUMN = ['assessmentItemID', 'testId', 'KnowledgeTag']
+        self.args.EXCLUDE_COLUMN = ['Timestamp']
         self.args.ANSWER_COLUMN = ['answerCode']
 
         assert df.head().shape[1] == len(self.args.USERID_COLUMN) + len(self.args.ANSWER_COLUMN) + len(
@@ -94,7 +94,7 @@ class Preprocess:
             self.args.n_embedding_layers.append(len(np.load(os.path.join(self.args.asset_dir, val+'_classes.npy'))))
 
         df = df.sort_values(by=["userID", "Timestamp"], axis=0)
-        columns = self.args.USERID_COLUMN+self.args.USE_COLUMN+self.args.ANSWER_COLUMN
+        columns = self.args.USERID_COLUMN+self.args.FEAT_COLUMN+self.args.ANSWER_COLUMN
         group = df[columns].groupby('userID').apply(self.df_to_tuple)
 
         return group.values
