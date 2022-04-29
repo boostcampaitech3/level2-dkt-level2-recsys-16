@@ -70,12 +70,14 @@ class Preprocess:
 
     def __feature_engineering(self, df):
         self.args.USERID_COLUMN = ['userID']
-        self.args.FEAT_COLUMN = ['assessmentItemID', 'testId', 'KnowledgeTag']
+        self.args.FEAT_COLUMN = ['assessmentItemID', 'testId', 'KnowledgeTag', 'elapsed', 'class', 'momentum']
         self.args.EXCLUDE_COLUMN = ['Timestamp']
         self.args.ANSWER_COLUMN = ['answerCode']
 
         assert df.head().shape[1] == len(self.args.USERID_COLUMN) + len(self.args.ANSWER_COLUMN) + len(
             self.args.FEAT_COLUMN) + len(self.args.EXCLUDE_COLUMN)
+
+        print(f"using columns: {self.args.FEAT_COLUMN}")
 
         return df
 
@@ -84,7 +86,7 @@ class Preprocess:
 
     def load_data_from_file(self, file_name, is_train=True):
         csv_file_path = os.path.join(self.args.data_dir, file_name)
-        df = pd.read_csv(csv_file_path)  # , nrows=100000)
+        df = pd.read_csv(csv_file_path)
         df = self.__feature_engineering(df)
         df = self.__preprocessing(df, is_train)
 
