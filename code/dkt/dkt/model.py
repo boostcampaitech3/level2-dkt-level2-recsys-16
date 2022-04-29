@@ -49,8 +49,11 @@ class LSTM(nn.Module):
 
     def forward(self, input):
 
+        print(input)
+
         test, question, tag, _, mask, interaction = input
 
+        print(interaction)
         batch_size = interaction.size(0)
 
         # Embedding
