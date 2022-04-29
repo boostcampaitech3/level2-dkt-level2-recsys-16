@@ -55,6 +55,18 @@ for k, df in enumerate([df_train, df_test]):
     df["momentum"] = momoentum
     df["momentum"] = df["momentum"].fillna(0)
 
+    # user_acc
+    df['user_correct_answer'] = df.groupby('userID')['answerCode'].transform(lambda x: x.cumsum().shift(1))
+    df['user_total_answer'] = df.groupby('userID')['answerCode'].cumcount()
+    df['user_acc'] = df['user_correct_answer']/df['user_total_answer']
+    
+    
+    
+    
+    
+    
+    
+    
     df.to_csv(os.path.join(PATH,f'{s}_adjusted.csv'), index=False)
     print(f"saved -- {s}_adjusted.csv")
 
