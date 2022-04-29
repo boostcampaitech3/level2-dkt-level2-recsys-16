@@ -70,8 +70,8 @@ class Preprocess:
 
     def __feature_engineering(self, df):
         self.args.USERID_COLUMN = ['userID']
-        self.args.FEAT_COLUMN = ['assessmentItemID', 'testId', 'KnowledgeTag', 'elapsed', 'class','user_acc']
-        self.args.EXCLUDE_COLUMN = ['Timestamp','user_total_answer','user_correct_answer','momentum']
+        self.args.FEAT_COLUMN = ['assessmentItemID', 'testId', 'KnowledgeTag', 'elapsed', 'class','user_acc','class_acc']
+        self.args.EXCLUDE_COLUMN = ['Timestamp','user_total_answer','user_correct_answer','momentum','problem_number','class_o','class_count']
         self.args.ANSWER_COLUMN = ['answerCode']
 
         assert df.head().shape[1] == len(self.args.USERID_COLUMN) + len(self.args.ANSWER_COLUMN) + len(

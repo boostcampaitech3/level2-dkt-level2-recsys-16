@@ -60,13 +60,19 @@ for k, df in enumerate([df_train, df_test]):
     df['user_total_answer'] = df.groupby('userID')['answerCode'].cumcount()
     df['user_acc'] = df['user_correct_answer']/df['user_total_answer']
     
+    # problem_number
+    df['problem_number'] = df['assessmentItemID'].apply(lambda x : int(x[-3:]))
+
+    # class_acc
+    df['class_o'] = df.groupby(['userID','class'])['answerCode'].transform(lambda x: x.cumsum().shift(1))
+    df['class_count'] = df.groupby(['userID','class']).cumcount()
+    df['class_acc'] = df['class_o']/df['class_count']
     
     
     
     
     
-    
-    
+    df.fillna(0, inplace=True)
     df.to_csv(os.path.join(PATH,f'{s}_adjusted.csv'), index=False)
     print(f"saved -- {s}_adjusted.csv")
 
