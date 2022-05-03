@@ -24,8 +24,16 @@ class LSTM(nn.Module):
         for value in self.args.n_embedding_layers:
             self.embedding_features.append(nn.Embedding(value + 1, self.hidden_dim // self.args.dim_div))
 
+        self.has_cont_emb = self.args.n_cont_feat != 0
+        emb_dim = self.hidden_dim if self.args.n_cont_feat == 0 else self.hidden_dim // 2
+
+        self.embedding_cont_features = nn.Sequential(
+                nn.Linear(self.args.n_cont_feat, emb_dim),
+                nn.LayerNorm(emb_dim)
+        )
+
         # embedding combination projection
-        self.comb_proj = nn.Linear((self.hidden_dim//self.args.dim_div)*(len(self.args.n_embedding_layers)+1), self.hidden_dim)
+        self.comb_proj = nn.Linear((self.hidden_dim//self.args.dim_div)*(len(self.args.n_embedding_layers)+1), emb_dim)
 
         self.lstm = nn.LSTM(
             self.hidden_dim, self.hidden_dim, self.n_layers, batch_first=True
@@ -46,24 +54,26 @@ class LSTM(nn.Module):
         return (h, c)
 
     def forward(self, input):
-
-        _, mask, interaction, _ = input[-4:]
+        # *cate_features, cont_features, mask, interaction, gather_index, correct
+        cont_features, mask, interaction = input[-5:-2]
 
         batch_size = interaction.size(0)
 
         # Embedding
-
         embed_interaction = self.embedding_interaction(interaction)
         embed_features = []
-        for _input, _embedding_feature in zip(input[:-4], self.embedding_features):
+        for _input, _embedding_feature in zip(input[:-5], self.embedding_features):
             value = _embedding_feature(_input)
             embed_features.append(value)
 
         embed_features = [embed_interaction] + embed_features
 
         embed = torch.cat(embed_features, 2)
-
         X = self.comb_proj(embed)
+
+        if self.has_cont_emb:
+            cont_emb = self.embedding_cont_features(cont_features)
+            X = torch.cat([X, cont_emb], 2)
 
         hidden = self.init_hidden(batch_size)
         out, hidden = self.lstm(X, hidden)
@@ -92,9 +102,16 @@ class LSTMATTN(nn.Module):
         self.embedding_features = nn.ModuleList([])
         for value in self.args.n_embedding_layers:
             self.embedding_features.append(nn.Embedding(value + 1, self.hidden_dim // self.args.dim_div))
-
+        
+        self.has_cont_emb = self.args.n_cont_feat != 0
+        emb_dim = self.hidden_dim if self.args.n_cont_feat == 0 else self.hidden_dim // 2
+        
+        self.embedding_cont_features = nn.Sequential(
+                nn.Linear(self.args.n_cont_feat, emb_dim),
+                nn.LayerNorm(emb_dim)
+        )
         # embedding combination projection
-        self.comb_proj = nn.Linear((self.hidden_dim//self.args.dim_div)*(len(self.args.n_embedding_layers)+1), self.hidden_dim)
+        self.comb_proj = nn.Linear((self.hidden_dim//self.args.dim_div)*(len(self.args.n_embedding_layers)+1), emb_dim)
 
 
         self.lstm = nn.LSTM(
@@ -127,23 +144,25 @@ class LSTMATTN(nn.Module):
         return (h, c)
 
     def forward(self, input):
+        cont_features, mask, interaction = input[-5:-2]
 
-        _, mask, interaction, _ = input[-4:]
-        # print(interaction, interaction.size(0))
         batch_size = interaction.size(0)
 
         # Embedding
         embed_interaction = self.embedding_interaction(interaction)
         embed_features = []
-        for _input, _embedding_feature in zip(input[:-4], self.embedding_features):
+        for _input, _embedding_feature in zip(input[:-5], self.embedding_features):
             value = _embedding_feature(_input)
             embed_features.append(value)
 
         embed_features = [embed_interaction] + embed_features
 
         embed = torch.cat(embed_features, 2)
-
         X = self.comb_proj(embed)
+
+        if self.has_cont_emb:
+            cont_emb = self.embedding_cont_features(cont_features)
+            X = torch.cat([X, cont_emb], 2)
 
         hidden = self.init_hidden(batch_size)
         out, hidden = self.lstm(X, hidden)
@@ -182,9 +201,15 @@ class Bert(nn.Module):
         for value in self.args.n_embedding_layers:
             self.embedding_features.append(nn.Embedding(value + 1, self.hidden_dim // self.args.dim_div))
 
-
+        self.has_cont_emb = self.args.n_cont_feat != 0
+        emb_dim = self.hidden_dim if self.args.n_cont_feat == 0 else self.hidden_dim // 2
+        
+        self.embedding_cont_features = nn.Sequential(
+                nn.Linear(self.args.n_cont_feat, emb_dim),
+                nn.LayerNorm(emb_dim)
+        )
         # embedding combination projection
-        self.comb_proj = nn.Linear((self.hidden_dim//self.args.dim_div)*(len(self.args.n_embedding_layers)+1), self.hidden_dim)
+        self.comb_proj = nn.Linear((self.hidden_dim//self.args.dim_div)*(len(self.args.n_embedding_layers)+1), emb_dim)
 
         # Bert config
         self.config = BertConfig(
@@ -205,24 +230,25 @@ class Bert(nn.Module):
         self.activation = nn.Sigmoid()
 
     def forward(self, input):
-        # test, question, tag, _, mask, interaction, _ = input
-        _, mask, interaction, _ = input[-4:]
+        cont_features, mask, interaction = input[-5:-2]
         batch_size = interaction.size(0)
 
         # 신나는 embedding
-
         embed_interaction = self.embedding_interaction(interaction)
 
         embed_features = []
-        for _input, _embedding_feature in zip(input[:-4], self.embedding_features):
+        for _input, _embedding_feature in zip(input[:-5], self.embedding_features):
             value = _embedding_feature(_input)
             embed_features.append(value)
 
         embed_features = [embed_interaction] + embed_features
 
         embed = torch.cat(embed_features, 2)
-
         X = self.comb_proj(embed)
+
+        if self.has_cont_emb:
+            cont_emb = self.embedding_cont_features(cont_features)
+            X = torch.cat([X, cont_emb], 2)
 
         # Bert
         encoded_layers = self.encoder(inputs_embeds=X, attention_mask=mask)

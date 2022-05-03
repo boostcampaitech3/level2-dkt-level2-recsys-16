@@ -86,7 +86,7 @@ def train(train_loader, model, optimizer, scheduler, args):
     for step, batch in enumerate(train_loader):
         input = process_batch(batch, args)
         preds = model(input)
-        targets = input[-4]  # correct
+        targets = input[-1]  # correct
 
         loss = compute_loss(preds, targets)
         update_params(loss, model, optimizer, scheduler, args)
@@ -128,7 +128,7 @@ def validate(valid_loader, model, args):
         input = process_batch(batch, args)
 
         preds = model(input)
-        targets = input[-4]  # correct
+        targets = input[-1]  # correct
 
         # predictions
         preds = preds[:, -1]
@@ -206,10 +206,10 @@ def get_model(args):
 # 배치 전처리
 def process_batch(batch, args):
 
-    features = batch[:-2]
-    correct = batch[-2]
-    mask = batch[-1]
-
+    cate_features = batch[:args.n_cate_feat]
+    cont_features = batch[args.n_cate_feat:-2]
+    mask = batch[-2]
+    correct = batch[-1]
 
     # change to float
     mask = mask.type(torch.FloatTensor)
@@ -222,23 +222,29 @@ def process_batch(batch, args):
     interaction_mask[:, 0] = 0
     interaction = (interaction * interaction_mask).to(torch.int64)
 
-    # features
-    features = [((feature + 1) * mask).to(torch.int64) for feature in features]
+    # cont_feature 설정
+    cate_features = [((feature + 1) * mask).to(torch.int64) for feature in cate_features]
+    if len(cont_features) != 0:
+        for i in range(len(cont_features)):
+            cont_features[i] = (cont_features[i]+1) * mask
+            cont_features[i] = cont_features[i].unsqueeze(-1)
+        
+        cont_features = torch.cat(cont_features, 2)
+        cont_features = cont_features.to(torch.float32).to(args.device)
     
     # 마지막 sequence만 사용하기 위한 index
     gather_index = torch.tensor(np.count_nonzero(mask, axis=1))
     gather_index = gather_index.view(-1, 1) - 1
     
     # device memory로 이동
-    features = [feature.to(args.device) for feature in features]
+    cate_features = [feature.to(args.device) for feature in cate_features]
 
     correct = correct.to(args.device)
     mask = mask.to(args.device)
     interaction = interaction.to(args.device)
     gather_index = gather_index.to(args.device)
 
-
-    output = tuple(features + [correct, mask, interaction, gather_index])
+    output = *cate_features, cont_features, mask, interaction, gather_index, correct
     
     return output
 
