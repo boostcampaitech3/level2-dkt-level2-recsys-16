@@ -44,9 +44,10 @@ def augmentation(df, length, mode='split', seed=42):
     elif mode=='crop':
         max_ = max(users)
         df_new = pd.DataFrame()
+        np.random.seed(seed_)
         for user in users:
             if num_counts[user]>= 2*length:
-                k = np.random.randint(s,s+num_counts[user]-length, seed=seed)
+                k = np.random.randint(s,s+num_counts[user]-length)
                 df_tmp = df.iloc[k:k+length,:].copy()
                 df_tmp['userID'] = [max_+1]*length
                 df_new = pd.concat([df_new,df_tmp])
