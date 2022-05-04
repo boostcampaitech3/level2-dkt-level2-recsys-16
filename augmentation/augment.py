@@ -33,9 +33,9 @@ def augmentation(df, length, mode='split', seed=42):
             if user_augmentation:
                 s = user_augmentation[-1]+1
             if num_counts[user]>= 2*length:
-                for i in range(s, s+num_counts[user]//length):
+                for i in range(s, s+num_counts[user]//length-1):
                     user_augmentation.extend([i]*length)
-                user_augmentation.extend([s+num_counts[user]//length]*(num_counts[user]%length))
+                user_augmentation.extend([s+num_counts[user]//length-1]*(length+num_counts[user]%length))
             else:
                 user_augmentation.extend([s]*num_counts[user])
 
