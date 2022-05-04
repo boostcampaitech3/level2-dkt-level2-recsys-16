@@ -70,19 +70,32 @@ class Preprocess:
 
     def __feature_engineering(self, df):
         self.args.USERID_COLUMN = ['userID']
+<<<<<<< HEAD
         self.args.FEAT_COLUMN = ['assessmentItemID', 'testId', 'KnowledgeTag', 'elapsed', 'class','user_acc','class_acc']
         self.args.EXCLUDE_COLUMN = ['Timestamp','user_total_answer','user_correct_answer','momentum','problem_number','class_o','class_count']
+=======
+        self.args.FEAT_COLUMN = ['assessmentItemID', 'testId', 'KnowledgeTag', 'elapsed', 'class','user_acc']
+        self.args.CONT_FEAT_COLUMN = []
+        self.args.EXCLUDE_COLUMN = ['Timestamp','user_total_answer','user_correct_answer','momentum']
+>>>>>>> 8ad6484d3da3739bec1c8dc11dbfbc7bce0f9ec5
         self.args.ANSWER_COLUMN = ['answerCode']
 
-        assert df.head().shape[1] == len(self.args.USERID_COLUMN) + len(self.args.ANSWER_COLUMN) + len(
-            self.args.FEAT_COLUMN) + len(self.args.EXCLUDE_COLUMN)
+        self.args.n_cate_feat = len(self.args.FEAT_COLUMN)
+        self.args.n_cont_feat = len(self.args.CONT_FEAT_COLUMN)
 
-        print(f"using columns: {self.args.FEAT_COLUMN}")
+        assert df.head().shape[1] == len(self.args.USERID_COLUMN) + len(self.args.ANSWER_COLUMN) \
+                                     + len(self.args.FEAT_COLUMN) + len(self.args.CONT_FEAT_COLUMN) \
+                                     + len(self.args.EXCLUDE_COLUMN)
+
+        print(f"using category columns: {self.args.FEAT_COLUMN}")
+        print(f"using continuous columns: {self.args.CONT_FEAT_COLUMN}")
 
         return df
 
     def df_to_tuple(self, r):
-        return tuple([r[x].values for x in self.args.FEAT_COLUMN] + [r[x].values for x in self.args.ANSWER_COLUMN])
+        return [r[x].values for x in self.args.FEAT_COLUMN] \
+               + [r[x].values for x in self.args.CONT_FEAT_COLUMN] \
+               + [r[x].values for x in self.args.ANSWER_COLUMN]
 
     def load_data_from_file(self, file_name, is_train=True):
         csv_file_path = os.path.join(self.args.data_dir, file_name)
@@ -96,7 +109,8 @@ class Preprocess:
             self.args.n_embedding_layers.append(len(np.load(os.path.join(self.args.asset_dir, val+'_classes.npy'))))
 
         df = df.sort_values(by=["userID", "Timestamp"], axis=0)
-        columns = self.args.USERID_COLUMN+self.args.FEAT_COLUMN+self.args.ANSWER_COLUMN
+        columns = self.args.USERID_COLUMN + self.args.FEAT_COLUMN \
+                  + self.args.CONT_FEAT_COLUMN + self.args.ANSWER_COLUMN
         group = df[columns].groupby('userID').apply(self.df_to_tuple)
 
         return group.values
@@ -119,25 +133,37 @@ class DKTDataset(torch.utils.data.Dataset):
         # 각 data의 sequence length
         seq_len = len(row[0])
 
-        cate_cols = [val for val in row]
+        cate_cols = row[:self.args.n_cate_feat]
+        cont_cols = row[self.args.n_cate_feat:-1]
+        answer_col = row[-1]
 
         # max seq len을 고려하여서 이보다 길면 자르고 아닐 경우 그대로 냅둔다
         if seq_len > self.args.max_seq_len:
             for i, col in enumerate(cate_cols):
-                cate_cols[i] = col[-self.args.max_seq_len :]
+                cate_cols[i] = col[-self.args.max_seq_len:]
+            
+            for i, col in enumerate(cont_cols):
+                cont_cols[i] = col[-self.args.max_seq_len:]
+
+            answer_col = answer_col[-self.args.max_seq_len:]
+            
             mask = np.ones(self.args.max_seq_len, dtype=np.int16)
         else:
             mask = np.zeros(self.args.max_seq_len, dtype=np.int16)
             mask[-seq_len:] = 1
 
-        # mask도 columns 목록에 포함시킴
-        cate_cols.append(mask)
-
         # np.array -> torch.tensor 형변환
         for i, col in enumerate(cate_cols):
             cate_cols[i] = torch.tensor(col)
+        
+        # cont_cols = torch.tensor(cont_cols) if self.args.n_cont_feat > 0 else None
+        for i, col in enumerate(cont_cols):
+            cont_cols[i] = torch.tensor(col)
 
-        return cate_cols
+        mask = torch.tensor(mask)
+        answer_col = torch.tensor(answer_col)
+        
+        return *cate_cols, *cont_cols, mask, answer_col
 
     def __len__(self):
         return len(self.data)
@@ -149,19 +175,19 @@ from torch.nn.utils.rnn import pad_sequence
 def collate(batch):
     col_n = len(batch[0])
     col_list = [[] for _ in range(col_n)]
-    max_seq_len = len(batch[0][-1])
+    max_seq_len = len(batch[0][-2])
 
     # batch의 값들을 각 column끼리 그룹화
     for row in batch:
         for i, col in enumerate(row):
-            pre_padded = torch.zeros(max_seq_len)
+            pre_padded = torch.zeros(max_seq_len).to(col.dtype)
             pre_padded[-len(col) :] = col
             col_list[i].append(pre_padded)
 
     for i, _ in enumerate(col_list):
         col_list[i] = torch.stack(col_list[i])
 
-    return tuple(col_list)
+    return col_list
 
 
 def get_loaders(args, train, valid):
