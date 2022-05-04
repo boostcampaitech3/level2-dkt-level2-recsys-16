@@ -54,7 +54,7 @@ def augmentation(df, length, mode='split', seed=42):
             s+=num_counts[user]
             max_+=1
         df = pd.concat([df,df_new])
-        df.reset_index()
+        df.reset_index(inplace=True)
     
     m = df['userID'].nunique()
     print(f'Done: {n}명에서 {m}명으로 augmentation')
