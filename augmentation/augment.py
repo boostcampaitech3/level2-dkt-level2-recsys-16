@@ -78,6 +78,7 @@ if __name__ == "__main__":
     os.makedirs(save_dir, exist_ok=True)
     df_train = pd.read_csv(DATA_PATH_TRAIN)
     df_test = pd.read_csv(DATA_PATH_TEST)
+    df_test = df_test[df_test['answerCode']!=-1]
     
     if with_test_data:
         df = pd.concat([df_train, df_test])
