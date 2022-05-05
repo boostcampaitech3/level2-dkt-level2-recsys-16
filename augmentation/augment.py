@@ -56,8 +56,20 @@ def augmentation(df, length, mode='split', seed=42):
         df = pd.concat([df,df_new])
         df.reset_index(inplace=True)
     
+    elif mode=='shuffle':
+        df_new = pd.DataFrame()
+        max_ = max(users)
+        for user in users:
+            s+=num_counts[user]
+            df_tmp = df.iloc[s-min(length,num_counts[user]):s,:].copy()
+            df_tmp = pd.concat([df_tmp.iloc[:-1,:].sample(frac=1, random_state=seed_).copy(),df_tmp.iloc[-1:,:].copy()])
+            df_tmp['userID'] = [max_+1]*min(length,num_counts[user])
+            df_new = pd.concat([df_new,df_tmp])
+            max_+=1
+        df = pd.concat([df,df_new])
     m = df['userID'].nunique()
     print(f'Done: {n}명에서 {m}명으로 augmentation')
+
     
     return df
 

@@ -70,22 +70,17 @@ class Preprocess:
 
     def __feature_engineering(self, df):
         self.args.USERID_COLUMN = ['userID']
-<<<<<<< HEAD
-        self.args.FEAT_COLUMN = ['assessmentItemID', 'testId', 'KnowledgeTag', 'elapsed', 'class','user_acc','class_acc']
-        self.args.EXCLUDE_COLUMN = ['Timestamp','user_total_answer','user_correct_answer','momentum','problem_number','class_o','class_count']
-=======
         self.args.FEAT_COLUMN = ['assessmentItemID', 'testId', 'KnowledgeTag', 'elapsed', 'class','user_acc']
         self.args.CONT_FEAT_COLUMN = []
-        self.args.EXCLUDE_COLUMN = ['Timestamp','user_total_answer','user_correct_answer','momentum']
->>>>>>> 8ad6484d3da3739bec1c8dc11dbfbc7bce0f9ec5
+        # self.args.EXCLUDE_COLUMN = ['Timestamp','user_total_answer','user_correct_answer','momentum']
         self.args.ANSWER_COLUMN = ['answerCode']
 
         self.args.n_cate_feat = len(self.args.FEAT_COLUMN)
         self.args.n_cont_feat = len(self.args.CONT_FEAT_COLUMN)
 
-        assert df.head().shape[1] == len(self.args.USERID_COLUMN) + len(self.args.ANSWER_COLUMN) \
-                                     + len(self.args.FEAT_COLUMN) + len(self.args.CONT_FEAT_COLUMN) \
-                                     + len(self.args.EXCLUDE_COLUMN)
+        # assert df.head().shape[1] == len(self.args.USERID_COLUMN) + len(self.args.ANSWER_COLUMN) \
+        #                              + len(self.args.FEAT_COLUMN) + len(self.args.CONT_FEAT_COLUMN) \
+        #                              + len(self.args.EXCLUDE_COLUMN)
 
         print(f"using category columns: {self.args.FEAT_COLUMN}")
         print(f"using continuous columns: {self.args.CONT_FEAT_COLUMN}")
