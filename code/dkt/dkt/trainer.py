@@ -114,27 +114,15 @@ def run_pesudo(args, train_data, valid_data):
                 "valid_acc": acc,
             }
         )
-        if auc > best_auc:
-            best_auc = auc
-            # torch.nn.DataParallel로 감싸진 경우 원래의 model을 가져옵니다.
-            model_to_save = model.module if hasattr(model, "module") else model
-            save_checkpoint(
-                {
-                    "epoch": epoch + 1,
-                    "state_dict": model_to_save.state_dict(),
-                },
-                args.model_dir,
-                "model.pt",
-            )
-            early_stopping_counter = 0
-        else:
-            early_stopping_counter += 1
-            if early_stopping_counter >= args.patience:
-                print(
-                    f"EarlyStopping counter: {early_stopping_counter} out of {args.patience}"
-                )
-                break
-
+        model_to_save = model.module if hasattr(model, "module") else model
+        save_checkpoint(
+            {
+                "epoch": epoch + 1,
+                "state_dict": model_to_save.state_dict(),
+            },
+            args.model_dir,
+            "model.pt",
+        )
         # scheduler
         if args.scheduler == "plateau":
             scheduler.step(best_auc)
