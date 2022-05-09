@@ -76,6 +76,58 @@ def run(args, train_data, valid_data):
         if args.scheduler == "plateau":
             scheduler.step(best_auc)
 
+def run_pesudo(args, train_data, valid_data):
+    train_loader, valid_loader = get_loaders(args, train_data, valid_data)
+
+    # only when using warmup scheduler
+    args.total_steps = int(math.ceil(len(train_loader.dataset) / args.batch_size)) * (
+        args.n_epochs
+    )
+    args.warmup_steps = args.total_steps // 10
+
+    model = load_model(args)
+    optimizer = get_optimizer(model, args)
+    scheduler = get_scheduler(optimizer, args)
+
+    best_auc = -1
+    early_stopping_counter = 0
+    for epoch in range(args.n_epochs):
+
+        print(f"Start Training: Epoch {epoch + 1}")
+
+        ### TRAIN
+        train_auc, train_acc, train_loss = train(
+            train_loader, model, optimizer, scheduler, args
+        )
+
+        ### VALID
+        auc, acc = validate(valid_loader, model, args)
+
+        ### TODO: model save or early stopping
+        wandb.log(
+            {
+                "epoch": epoch,
+                "train_loss": train_loss,
+                "train_auc": train_auc,
+                "train_acc": train_acc,
+                "valid_auc": auc,
+                "valid_acc": acc,
+            }
+        )
+        model_to_save = model.module if hasattr(model, "module") else model
+        save_checkpoint(
+            {
+                "epoch": epoch + 1,
+                "state_dict": model_to_save.state_dict(),
+            },
+            args.model_dir,
+            "model.pt",
+        )
+        # scheduler
+        if args.scheduler == "plateau":
+            scheduler.step(best_auc)
+
+
 
 def train(train_loader, model, optimizer, scheduler, args):
     model.train()

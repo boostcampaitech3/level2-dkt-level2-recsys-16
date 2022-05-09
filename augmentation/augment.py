@@ -78,14 +78,15 @@ if __name__ == "__main__":
     os.makedirs(save_dir, exist_ok=True)
     df_train = pd.read_csv(DATA_PATH_TRAIN)
     df_test = pd.read_csv(DATA_PATH_TEST)
+    df_test = df_test[df_test['answerCode']!=-1]
     
     if with_test_data:
         df = pd.concat([df_train, df_test])
         df = augmentation(df,length, mode=mode, seed=seed_)
-        df.to_csv(os.path.join(save_dir, f'train+test_augment_{mode}.csv'), index=False)
+        df.to_csv(os.path.join(save_dir, f'train+test_augment_{mode}_{length}.csv'), index=False)
 
     else:
         df_train = augmentation(df_train,length, mode=mode, seed=seed_)
         df_test = augmentation(df_test,length, mode=mode, seed=seed_)
-        df_train.to_csv(os.path.join(save_dir, f'train_augment_{mode}.csv'), index=False)
-        df_test.to_csv(os.path.join(save_dir, f'test_augment_{mode}.csv'), index=False)
+        df_train.to_csv(os.path.join(save_dir, f'train_augment_{mode}_{length}.csv'), index=False)
+        df_test.to_csv(os.path.join(save_dir, f'test_augment_{mode}_{length}.csv'), index=False)

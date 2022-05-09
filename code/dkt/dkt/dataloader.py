@@ -36,6 +36,7 @@ class Preprocess:
 
         return data_1, data_2
 
+
     def __save_labels(self, encoder, name):
         le_path = os.path.join(self.args.asset_dir, name + "_classes.npy")
         np.save(le_path, encoder.classes_)
@@ -70,8 +71,8 @@ class Preprocess:
 
     def __feature_engineering(self, df):
         self.args.USERID_COLUMN = ['userID']
-        self.args.FEAT_COLUMN = ['assessmentItemID', 'testId', 'KnowledgeTag', 'elapsed', 'class','user_acc']
-        self.args.CONT_FEAT_COLUMN = []
+        self.args.FEAT_COLUMN = ['problem_num', 'KnowledgeTag', 'testId', 'class']
+        self.args.CONT_FEAT_COLUMN = ['user_knowledge_rate', 'user_acc', 'momentum', 'knowledge_rate', 'class_rate', 'assessment_rate', 'hour_rate','elapsed_rate']
         # self.args.EXCLUDE_COLUMN = ['Timestamp','user_total_answer','user_correct_answer','momentum']
         self.args.ANSWER_COLUMN = ['answerCode']
 
