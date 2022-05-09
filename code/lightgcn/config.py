@@ -15,7 +15,7 @@ class CFG:
     pred_file = "submission.csv"
 
     # build
-    embedding_dim = 64  # int
+    embedding_dim = 64  # int # 임베딩 차원 ->
     num_layers = 1  # int
     alpha = None  # Optional[Union[float, Tensor]]
     build_kwargs = {}  # other arguments

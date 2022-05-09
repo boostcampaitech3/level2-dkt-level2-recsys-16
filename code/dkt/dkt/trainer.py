@@ -22,7 +22,10 @@ def run(args, train_data, valid_data):
     )
     args.warmup_steps = args.total_steps // 10
 
-    model = get_model(args)
+    model = get_model(args) # 모델 받아오기
+    print('model', type(model))
+
+
     optimizer = get_optimizer(model, args)
     scheduler = get_scheduler(optimizer, args)
 
@@ -119,6 +122,7 @@ def train(train_loader, model, optimizer, scheduler, args):
     return auc, acc, loss_avg
 
 
+
 def validate(valid_loader, model, args):
     model.eval()
 
@@ -193,12 +197,15 @@ def get_model(args):
     """
     if args.model == "lstm":
         model = LSTM(args)
+        model.to(args.device)
     if args.model == "lstmattn":
         model = LSTMATTN(args)
+        model.to(args.device)
     if args.model == "bert":
         model = Bert(args)
+        model.to(args.device)
 
-    model.to(args.device)
+
 
     return model
 
