@@ -5,6 +5,7 @@ import pandas as pd
 import os
 from dkt.dataloader import lgbm_custom_k_fold_split, lgbm_custom_train_test_split
 from dkt.utils import lgbm_feature_engineering
+import wandb
 import random
 import lightgbm as lgb
 from sklearn.metrics import roc_auc_score
@@ -317,6 +318,12 @@ class LGBM:
         acc = accuracy_score(y_test, np.where(preds >= 0.5, 1, 0))
         auc = roc_auc_score(y_test, preds)
 
+        wandb.log(
+            {
+                "valid_auc": auc,
+                "valid_acc": acc,
+            }
+        )
         print(f'VALID AUC : {auc} ACC : {acc}\n')
 
         # SAVE OUTPUT
