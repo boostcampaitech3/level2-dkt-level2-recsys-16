@@ -1,5 +1,9 @@
 import os
+
+import sys
+
 import pandas as pd
+
 
 import torch
 import wandb
@@ -7,7 +11,11 @@ from args import parse_args
 from dkt import trainer
 from dkt.dataloader import Preprocess, get_loaders
 from dkt.utils import setSeeds
+
+from dkt.model import LGBM
+
 from dkt.trainer import load_model, get_optimizer, get_scheduler, train
+
 
 
 def df_to_tuple(r):
@@ -24,14 +32,20 @@ def main(args):
     print(device)
     args.device = device
 
-    preprocess = Preprocess(args)
-    preprocess.load_train_data(args.file_name)
-    train_data = preprocess.get_train_data()
+    if args.model == 'lgbm':
+        wandb.init(project="dkt", config=vars(args))
+        model = LGBM(args)
+        print('model', type(model))
+        model.train()
+    else:
+        preprocess = Preprocess(args)
+        preprocess.load_train_data(args.file_name)
+        train_data = preprocess.get_train_data()
+        train_data, valid_data = preprocess.split_data(train_data)
+        wandb.init(project="dkt", config=vars(args))
+        trainer.run(args, train_data, valid_data)
 
-    train_data, valid_data = preprocess.split_data(train_data)
 
-    wandb.init(project="dkt", config=vars(args))
-    trainer.run(args, train_data, valid_data)
 
     if args.pseudo_label_file:
         args.n_epochs = args.pseudo_epochs
