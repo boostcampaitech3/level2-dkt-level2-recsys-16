@@ -76,6 +76,58 @@ def run(args, train_data, valid_data):
         if args.scheduler == "plateau":
             scheduler.step(best_auc)
 
+def run_pesudo(args, train_data, valid_data):
+    train_loader, valid_loader = get_loaders(args, train_data, valid_data)
+
+    # only when using warmup scheduler
+    args.total_steps = int(math.ceil(len(train_loader.dataset) / args.batch_size)) * (
+        args.n_epochs
+    )
+    args.warmup_steps = args.total_steps // 10
+
+    model = load_model(args)
+    optimizer = get_optimizer(model, args)
+    scheduler = get_scheduler(optimizer, args)
+
+    best_auc = -1
+    early_stopping_counter = 0
+    for epoch in range(args.n_epochs):
+
+        print(f"Start Training: Epoch {epoch + 1}")
+
+        ### TRAIN
+        train_auc, train_acc, train_loss = train(
+            train_loader, model, optimizer, scheduler, args
+        )
+
+        ### VALID
+        auc, acc = validate(valid_loader, model, args)
+
+        ### TODO: model save or early stopping
+        wandb.log(
+            {
+                "epoch": epoch,
+                "train_loss": train_loss,
+                "train_auc": train_auc,
+                "train_acc": train_acc,
+                "valid_auc": auc,
+                "valid_acc": acc,
+            }
+        )
+        model_to_save = model.module if hasattr(model, "module") else model
+        save_checkpoint(
+            {
+                "epoch": epoch + 1,
+                "state_dict": model_to_save.state_dict(),
+            },
+            args.model_dir,
+            "model.pt",
+        )
+        # scheduler
+        if args.scheduler == "plateau":
+            scheduler.step(best_auc)
+
+
 
 def train(train_loader, model, optimizer, scheduler, args):
     model.train()
@@ -86,7 +138,7 @@ def train(train_loader, model, optimizer, scheduler, args):
     for step, batch in enumerate(train_loader):
         input = process_batch(batch, args)
         preds = model(input)
-        targets = input[3]  # correct
+        targets = input[-1]  # correct
 
         loss = compute_loss(preds, targets)
         update_params(loss, model, optimizer, scheduler, args)
@@ -128,7 +180,7 @@ def validate(valid_loader, model, args):
         input = process_batch(batch, args)
 
         preds = model(input)
-        targets = input[3]  # correct
+        targets = input[-1]  # correct
 
         # predictions
         preds = preds[:, -1]
@@ -206,7 +258,10 @@ def get_model(args):
 # 배치 전처리
 def process_batch(batch, args):
 
-    test, question, tag, correct, mask = batch
+    cate_features = batch[:args.n_cate_feat]
+    cont_features = batch[args.n_cate_feat:-2]
+    mask = batch[-2]
+    correct = batch[-1]
 
     # change to float
     mask = mask.type(torch.FloatTensor)
@@ -219,23 +274,31 @@ def process_batch(batch, args):
     interaction_mask[:, 0] = 0
     interaction = (interaction * interaction_mask).to(torch.int64)
 
-    #  test_id, question_id, tag
-    test = ((test + 1) * mask).to(torch.int64)
-    question = ((question + 1) * mask).to(torch.int64)
-    tag = ((tag + 1) * mask).to(torch.int64)
-
+    # cont_feature 설정
+    cate_features = [((feature + 1) * mask).to(torch.int64) for feature in cate_features]
+    if len(cont_features) != 0:
+        for i in range(len(cont_features)):
+            cont_features[i] = (cont_features[i]+1) * mask
+            cont_features[i] = cont_features[i].unsqueeze(-1)
+        
+        cont_features = torch.cat(cont_features, 2)
+        cont_features = cont_features.to(torch.float32).to(args.device)
+    
+    # 마지막 sequence만 사용하기 위한 index
+    gather_index = torch.tensor(np.count_nonzero(mask, axis=1))
+    gather_index = gather_index.view(-1, 1) - 1
+    
     # device memory로 이동
+    cate_features = [feature.to(args.device) for feature in cate_features]
 
-    test = test.to(args.device)
-    question = question.to(args.device)
-
-    tag = tag.to(args.device)
     correct = correct.to(args.device)
     mask = mask.to(args.device)
-
     interaction = interaction.to(args.device)
+    gather_index = gather_index.to(args.device)
 
-    return (test, question, tag, correct, mask, interaction)
+    output = *cate_features, cont_features, mask, interaction, gather_index, correct
+    
+    return output
 
 
 # loss계산하고 parameter update!
@@ -248,7 +311,7 @@ def compute_loss(preds, targets):
     """
     loss = get_criterion(preds, targets)
 
-    # 마지막 시퀀드에 대한 값만 loss 계산
+    # 마지막 시퀀스에 대한 값만 loss 계산
     loss = loss[:, -1]
     loss = torch.mean(loss)
     return loss
