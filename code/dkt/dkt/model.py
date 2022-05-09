@@ -1,5 +1,15 @@
 import torch
+import torch.optim
 import torch.nn as nn
+import pandas as pd
+import os
+from dkt.dataloader import lgbm_custom_k_fold_split, lgbm_custom_train_test_split
+from dkt.utils import lgbm_feature_engineering
+import random
+import lightgbm as lgb
+from sklearn.metrics import roc_auc_score
+from sklearn.metrics import accuracy_score
+import numpy as np
 
 try:
     from transformers.modeling_bert import BertConfig, BertEncoder, BertModel
@@ -198,6 +208,7 @@ class Bert(nn.Module):
         self.embedding_test = nn.Embedding(self.args.n_test + 1, self.hidden_dim // 3)
         self.embedding_question = nn.Embedding(
             self.args.n_questions + 1, self.hidden_dim // 3
+
         )
 
         self.embedding_tag = nn.Embedding(self.args.n_tag + 1, self.hidden_dim // 3)
@@ -259,3 +270,93 @@ class Bert(nn.Module):
         preds = self.activation(out).view(batch_size, -1)
 
         return preds
+
+
+class LGBM:
+    def __init__(self, args):
+        self.args = args
+
+    def train(self):
+        df = pd.read_csv(os.path.join(self.args.data_dir, 'train_data.csv'))
+        df, FEATS, CATEGORICAL_FEATS = lgbm_feature_engineering(df)
+        print(df.sample(3))
+
+        train, test = lgbm_custom_train_test_split(df, ratio=self.args.split_ratio)
+
+        y_train = train['answerCode']
+        train = train.drop(['answerCode'], axis=1)
+        y_test = test['answerCode']
+        test = test.drop(['answerCode'], axis=1)
+
+        lgb_train = lgb.Dataset(train[FEATS], y_train, feature_name=FEATS, categorical_feature=CATEGORICAL_FEATS)
+        lgb_test = lgb.Dataset(test[FEATS], y_test, feature_name=FEATS, categorical_feature=CATEGORICAL_FEATS)
+
+        model = lgb.train(  # args 로 받게끔 하는 부분
+            params={'objective': 'binary',
+                    'metric': ['binary_logloss', 'auc'],
+                    'boosting': self.args.boosting, #'dart', # default: gbdt(gradient boosting decision tree)
+                    'max_depth': self.args.max_dep, #12, # handle overfitting, lowering will do, 3~12 recommended
+                    'num_leaves': self.args.num_leaves, #512, # default: 31
+                    'min_data_in_leaf': self.args.mdil, #200, # handle overfitting, minimum number of records a leaf may have
+                    'feature_fraction': self.args.ff, #0.8, # randomly choose fraction of parameters when building tree in each iteration
+                    'bagging_fraction': self.args.bf, #0.8, # use fraction of data for each iteration, speed up and avoid overfitting
+                    'lambda': self.args.lmda, #0.2, # specifies regularization
+                    'min_gain_to_split': self.args.mgts, #20, # describe the minimum gain to make a split, used to control number of useful splits in tree
+                    'max_cat_group': self.args.mcg, #64, #When the number of category is large, finding the split point on it is easily over-fitting
+                    'tree_learner': self.args.tl #'feature',  # default: serial, [data, feature]
+                    },
+            train_set=lgb_train,
+            valid_sets=[lgb_train, lgb_test],  # 자동으로 훈련데이터는 빼고 나머지를 모두 사용해 valid
+            # learning_rate = 0.001, # default: 0.1
+            verbose_eval=100,
+            num_boost_round=1000,  # 최대 epoch 비슷, alias: num_iteration, n_estimators, num_trees
+            early_stopping_rounds=100  # stop training if one metric of one validation data doesn’t improve.
+        )
+
+        preds = model.predict(test[FEATS], num_iteration=model.best_iteration)  # num_iteration 은 early_stopping 했을때 사용
+        acc = accuracy_score(y_test, np.where(preds >= 0.5, 1, 0))
+        auc = roc_auc_score(y_test, preds)
+
+        print(f'VALID AUC : {auc} ACC : {acc}\n')
+
+        # SAVE OUTPUT
+        output_dir = 'lgbm-model/'
+
+        if not os.path.exists(output_dir):
+            os.makedirs(output_dir)
+
+        model.save_model(os.path.join(output_dir, self.args.model_name))
+        print('model saved!')
+
+
+    def infer(self):
+        output_dir = 'lgbm-model/'
+        model = lgb.Booster(model_file=os.path.join(output_dir, self.args.model_name))  # 모델 불러오기
+
+        # LOAD TESTDATA
+        test_csv_file_path = os.path.join(self.args.data_dir, 'test_data.csv')
+        test_df = pd.read_csv(test_csv_file_path)
+
+        # FEATURE ENGINEERING
+        test_df, FEATS, CATEGORICAL_FEATS = lgbm_feature_engineering(test_df)
+
+        # LEAVE LAST INTERACTION ONLY
+        test_df = test_df[test_df['userID'] != test_df['userID'].shift(-1)]
+
+        # DROP ANSWERCODE
+        test_df = test_df.drop(['answerCode'], axis=1)
+
+        total_preds = model.predict(test_df[FEATS], num_iteration=model.best_iteration)
+
+        # SAVE OUTPUT
+        output_dir = 'lgbm-output/'
+        write_path = os.path.join(output_dir, self.args.model_name.split('.')[0]+'_submission.csv')
+        if not os.path.exists(output_dir):
+            os.makedirs(output_dir)
+        with open(write_path, 'w', encoding='utf8') as w:
+            print("writing prediction : {}".format(write_path))
+            w.write("id,prediction\n")
+            for id, p in enumerate(total_preds):
+                w.write('{},{}\n'.format(id, p))
+
+        print('inference completed!')

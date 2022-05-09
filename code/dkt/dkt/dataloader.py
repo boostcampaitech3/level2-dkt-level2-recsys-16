@@ -114,6 +114,7 @@ class Preprocess:
             )
         )
 
+        print(group.values)
         return group.values
 
     def load_train_data(self, file_name):
@@ -141,7 +142,7 @@ class DKTDataset(torch.utils.data.Dataset):
         # max seq len을 고려하여서 이보다 길면 자르고 아닐 경우 그대로 냅둔다
         if seq_len > self.args.max_seq_len:
             for i, col in enumerate(cate_cols):
-                cate_cols[i] = col[-self.args.max_seq_len :]
+                cate_cols[i] = col[-self.args.max_seq_len:]
             mask = np.ones(self.args.max_seq_len, dtype=np.int16)
         else:
             mask = np.zeros(self.args.max_seq_len, dtype=np.int16)
@@ -208,3 +209,57 @@ def get_loaders(args, train, valid):
         )
 
     return train_loader, valid_loader
+
+
+def lgbm_custom_k_fold_split(df, k):
+    users = list(
+        zip(df['userID'].value_counts().index, df['userID'].value_counts()))  # (유저의 인덱스, 유저아이템row 개수)들로 구성된 리스트
+    random.shuffle(users)
+    step = len(users) // k + 1
+
+    users = list(users[i:i + step] for i in range(0, len(users), step))
+
+    dfs = []
+
+    for user in users:
+        user_id = []
+        # print(user[0])
+        for user in user:
+            user_id.append(user[0])
+
+        # print(user_id)
+
+        fold = df[df['userID'].isin(user_id)]
+
+        # print(fold.head(5))
+        # print(fold)
+
+        dfs.append(fold.copy())  # 객체자체를 복제
+
+    return dfs
+
+
+# train과 test 데이터셋은 사용자 별로 묶어서 분리를 해주어야함
+seed = random.seed(42)
+
+
+def lgbm_custom_train_test_split(df, ratio=0.7, split=True):
+    users = list(zip(df['userID'].value_counts().index, df['userID'].value_counts()))
+    random.shuffle(users)
+
+    max_train_data_len = ratio * len(df)
+    sum_of_train_data = 0
+    user_ids = []
+
+    for user_id, count in users:
+        sum_of_train_data += count
+        if max_train_data_len < sum_of_train_data:
+            break
+        user_ids.append(user_id)
+
+    train = df[df['userID'].isin(user_ids)]
+    test = df[df['userID'].isin(user_ids) == False]
+
+    # test데이터셋은 각 유저의 마지막 interaction만 추출
+    test = test[test['userID'] != test['userID'].shift(-1)]
+    return train, test

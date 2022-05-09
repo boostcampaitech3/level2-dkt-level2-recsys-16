@@ -67,6 +67,20 @@ def parse_args(mode="train"):
         "--scheduler", default="plateau", type=str, help="scheduler type"
     )
 
+
+    #### LGBM argument
+    parser.add_argument("--boosting", default='gbdt', type=str, help="default: gbdt(gradient boosting decision tree")
+    parser.add_argument("--max_dep", default=12, type=int, help="handle overfitting, lowering will do, 3~12 recommended")
+    parser.add_argument("--num_leaves", default=512, type=int, help="default: 31")
+    parser.add_argument("--mdil", default=200, type=int, help="handle overfitting, minimum number of records a leaf may have")
+    parser.add_argument("--ff", default=0.8, type=float, help="randomly choose fraction of parameters when building tree in each iteration")
+    parser.add_argument("--bf", default=0.8, type=float, help="use fraction of data for each iteration, speed up and avoid overfitting")
+    parser.add_argument("--lmda", default=0.2, type=float, help="specifies regularization")
+    parser.add_argument("--mgts", default=20, type=int, help="describe the minimum gain to make a split, used to control number of useful splits in tree")
+    parser.add_argument("--mcg", default=64, type=int, help="When the number of category is large, finding the split point on it is easily over-fitting")
+    parser.add_argument("--tl", default='feature', type=str, help="default: serial, or data or feature")
+    parser.add_argument("--split_ratio", default=0.7, type=float, help="train/test split ratio")
     args = parser.parse_args()
 
     return args
+
