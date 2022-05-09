@@ -25,17 +25,17 @@ df_test = pd.read_csv(PATH_TEST, parse_dates=['Timestamp'])
 df_train = df_train.sort_values(by=['userID', 'Timestamp']).reset_index(drop=True)
 df_test = df_test.sort_values(by=['userID', 'Timestamp']).reset_index(drop=True)
 
-print('augmentation starts ...')
+print('Feature Engineering starts ...')
 
 if with_test_data:
-    new_df = df_train
+    new_df = df_train.copy()
 else:    
     new_df = pd.concat([df_train, df_test])
     new_df = new_df[new_df['answerCode'] != -1]
     new_df = new_df.sort_values(['userID', 'Timestamp'])
 
 # elpased
-diff = df_test.loc[:, ['userID', 'testId', 'Timestamp']].groupby(['userID', 'testId']).diff()
+diff = df_train.loc[:, ['userID', 'testId', 'Timestamp']].groupby(['userID', 'testId']).diff()
 diff = diff['Timestamp'].apply(cal_sec)
 df_train['elapsed'] = diff.shift(-1).fillna(-1)
 
@@ -48,6 +48,7 @@ diff = diff['Timestamp'].apply(cal_sec)
 new_df['elapsed'] = diff.shift(-1).fillna(-1)
 
 if bins:
+    print(bins)
     df_train['elapsed'] = pd.cut(df_train['elapsed'], bins = bins, labels = list(range(len(bins)-1)))
     df_test['elapsed'] = pd.cut(df_test['elapsed'], bins = bins, labels = list(range(len(bins)-1)))
     new_df['elapsed'] = pd.cut(new_df['elapsed'], bins = bins, labels = list(range(len(bins)-1)))
@@ -75,6 +76,7 @@ new_df['class'] = new_df['testId'].str[2]
 df_train['class'] = df_train['testId'].str[2]
 df_test['class'] = df_test['testId'].str[2]
 
+new_df['problem_num'] = new_df['assessmentItemID'].str[-2:]
 df_train['problem_num'] = df_train['assessmentItemID'].str[-2:]
 df_test['problem_num'] = df_test['assessmentItemID'].str[-2:]
 
