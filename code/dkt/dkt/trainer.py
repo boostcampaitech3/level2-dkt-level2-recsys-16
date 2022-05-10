@@ -14,7 +14,7 @@ from .scheduler import get_scheduler
 
 
 def run(args, train_data, valid_data):
-    train_loader, valid_loader = get_loaders(args, train_data, valid_data)
+    train_loader, valid_loader = get_loaders(args, train_data, valid_data) #dkt_dataset 통과
 
     # only when using warmup scheduler
     args.total_steps = int(math.ceil(len(train_loader.dataset) / args.batch_size)) * (
@@ -23,7 +23,7 @@ def run(args, train_data, valid_data):
     args.warmup_steps = args.total_steps // 10
 
     model = get_model(args) # 모델 받아오기
-    print('model', type(model))
+    # print('model', type(model))
 
 
     optimizer = get_optimizer(model, args)
@@ -64,7 +64,7 @@ def run(args, train_data, valid_data):
                     "state_dict": model_to_save.state_dict(),
                 },
                 args.model_dir,
-                "model.pt",
+                args.model_name,
             )
             early_stopping_counter = 0
         else:
@@ -133,14 +133,16 @@ def run_pesudo(args, train_data, valid_data):
 
 
 def train(train_loader, model, optimizer, scheduler, args):
-    model.train()
+    model.train() # model 에게 model 을 훈련시킬것을 알림, mode == train 을 알림
 
     total_preds = []
     total_targets = []
     losses = []
     for step, batch in enumerate(train_loader):
         input = process_batch(batch, args)
-        preds = model(input)
+
+        preds = model(input) # lstmattn forward
+
         targets = input[-1]  # correct
 
         loss = compute_loss(preds, targets)
@@ -234,7 +236,7 @@ def inference(args, test_data):
 
         total_preds += list(preds)
 
-    write_path = os.path.join(args.output_dir, "submission.csv")
+    write_path = os.path.join(args.output_dir, args.output_name)
     if not os.path.exists(args.output_dir):
         os.makedirs(args.output_dir)
     with open(write_path, "w", encoding="utf8") as w:
@@ -262,33 +264,48 @@ def get_model(args):
     return model
 
 
-# 배치 전처리
+# 배치 전처리 -> 어떻게 나오는지
 def process_batch(batch, args):
+    # print('batch_len',len(batch)) --> 14
+    # batch : type -> list
+    # args.n_cate_feat: cate feat 개수 = 4
+    # print('batch[0]', batch[0].shape) -> torch.size([32, 100])
 
     cate_features = batch[:args.n_cate_feat]
-    cont_features = batch[args.n_cate_feat:-2]
+    cont_features = batch[args.n_cate_feat:-2] # 8, 32, 100
     mask = batch[-2]
     correct = batch[-1]
+
+    # print(correct.shape) --> torch.Size([32, 100])
 
     # change to float
     mask = mask.type(torch.FloatTensor)
     correct = correct.type(torch.FloatTensor)
 
     # interaction을 임시적으로 correct를 한칸 우측으로 이동한 것으로 사용
+    # print(correct.shape) --> torch.Size([32, 100])
+
     interaction = correct + 1  # 패딩을 위해 correct값에 1을 더해준다.
     interaction = interaction.roll(shifts=1, dims=1)
     interaction_mask = mask.roll(shifts=1, dims=1)
     interaction_mask[:, 0] = 0
     interaction = (interaction * interaction_mask).to(torch.int64)
 
-    # cont_feature 설정
+    # cate_feature 설정
     cate_features = [((feature + 1) * mask).to(torch.int64) for feature in cate_features]
+    # print(len(cate_features)) --> 4
+    # print(cate_features[0].shape) --> torch.Size([32, 100])
+
+    # cont_feature 설정
     if len(cont_features) != 0:
         for i in range(len(cont_features)):
             cont_features[i] = (cont_features[i]+1) * mask
-            cont_features[i] = cont_features[i].unsqueeze(-1)
-        
+            cont_features[i] = cont_features[i].unsqueeze(-1) # 2 차원을 3차원 tensor로 변환
+
+        # print(cont_features[0].shape) --> torch.Size([32, 100, 1])
+
         cont_features = torch.cat(cont_features, 2)
+        # print(cont_features.shape) --> torch.Size([32, 100, 8])
         cont_features = cont_features.to(torch.float32).to(args.device)
     
     # 마지막 sequence만 사용하기 위한 index
@@ -303,9 +320,10 @@ def process_batch(batch, args):
     interaction = interaction.to(args.device)
     gather_index = gather_index.to(args.device)
 
+    # automatically tupled
     output = *cate_features, cont_features, mask, interaction, gather_index, correct
     
-    return output
+    return output # type: tuple
 
 
 # loss계산하고 parameter update!

@@ -13,13 +13,14 @@ def parse_args(mode="train"):
 
     parser.add_argument(
         "--data_dir",
-        default="../../../data/",
+        default="../../data/",
         type=str,
         help="data directory",
     )
     parser.add_argument(
         "--asset_dir", default="asset/", type=str, help="data directory"
     )
+    #
 
     parser.add_argument(
         "--file_name", default="train_FE.csv", type=str, help="train file name"
@@ -36,6 +37,9 @@ def parse_args(mode="train"):
         "--output_dir", default="output/", type=str, help="output directory"
     )
     parser.add_argument(
+        "--output_name", default="submission.csv", type=str, help="output submission name"
+    )
+    parser.add_argument(
         "--test_file_name", default="test_FE.csv", type=str, help="test file name"
     )
 
@@ -46,7 +50,7 @@ def parse_args(mode="train"):
 
     # 모델
     parser.add_argument(
-        "--hidden_dim", default=256, type=int, help="hidden dimension size"
+        "--hidden_dim", default=64, type=int, help="hidden dimension size"
     )
     parser.add_argument("--n_layers", default=1, type=int, help="number of layers")
     parser.add_argument("--n_heads", default=8, type=int, help="number of heads")

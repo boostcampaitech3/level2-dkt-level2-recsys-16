@@ -71,7 +71,7 @@ class Preprocess:
 
     def __feature_engineering(self, df):
         self.args.USERID_COLUMN = ['userID']
-        self.args.FEAT_COLUMN = ['problem_num', 'KnowledgeTag', 'testId', 'class']
+        self.args.FEAT_COLUMN = ['problem_num', 'KnowledgeTag', 'testId', 'class'] # __preprocessing 대수
         self.args.CONT_FEAT_COLUMN = ['user_knowledge_rate', 'user_acc', 'momentum', 'knowledge_rate', 'class_rate', 'assessment_rate', 'hour_rate','elapsed_rate']
         # self.args.EXCLUDE_COLUMN = ['Timestamp','user_total_answer','user_correct_answer','momentum']
         self.args.ANSWER_COLUMN = ['answerCode']
@@ -96,20 +96,34 @@ class Preprocess:
     def load_data_from_file(self, file_name, is_train=True):
         csv_file_path = os.path.join(self.args.data_dir, file_name)
         df = pd.read_csv(csv_file_path)
+
         df = self.__feature_engineering(df)
+        print(f'after __feature_engineering\n{df.head()}')
         df = self.__preprocessing(df, is_train)
+        print(f'after __preprocessing\n{df.head()}')
 
         # 추후 feature를 embedding할 시에 embedding_layer의 input 크기를 결정할때 사용
-        self.args.n_embedding_layers = []     
+        self.args.n_embedding_layers = []
+
+        # asset 가져오고
         for val in self.args.FEAT_COLUMN:
             self.args.n_embedding_layers.append(len(np.load(os.path.join(self.args.asset_dir, val+'_classes.npy'))))
 
+        # n_embedding_layers [14, 913, 1538, 10]
+
+        # df 불러올때 순서대로 안불리는 경우 있어서
         df = df.sort_values(by=["userID", "Timestamp"], axis=0)
+
         columns = self.args.USERID_COLUMN + self.args.FEAT_COLUMN \
                   + self.args.CONT_FEAT_COLUMN + self.args.ANSWER_COLUMN
+
         group = df[columns].groupby('userID').apply(self.df_to_tuple)
 
-        print(group.values)
+        # 이거 한번 찍어보자
+        # print(group.values)
+        # print(len(group.values)) #22046
+        # print(group.values[0])
+        # print(len(group.values[0])) # 13
         return group.values
 
     def load_train_data(self, file_name):

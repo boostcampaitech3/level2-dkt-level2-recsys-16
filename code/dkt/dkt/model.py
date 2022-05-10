@@ -114,12 +114,30 @@ class LSTMATTN(nn.Module):
 
         # Embedding
         # interaction은 현재 correct로 구성되어있다. correct(1, 2) + padding(0)
-        self.embedding_interaction = nn.Embedding(3, self.hidden_dim // self.args.dim_div)
+        self.embedding_interaction = nn.Embedding(3, self.hidden_dim // self.args.dim_div) # dim_div = 3 -> 1, 2, 0 세개?
+        print('embedding_interaction',self.embedding_interaction.weight)
+
+        # 왜 dim_div 로 나누지? embedding_features 가 4개인데
         self.embedding_features = nn.ModuleList([])
-        for value in self.args.n_embedding_layers:
+        # n_embedding_layers [14, 913, 1538, 10]
+        for value in self.args.n_embedding_layers: # Feat_column: len[class, knowledgetag, problem_num, testid]
             self.embedding_features.append(nn.Embedding(value + 1, self.hidden_dim // self.args.dim_div))
+
+
+
+        # 유저와 아이템 임베딩이 여기로 들어와서 틀을 추가해야 된다고 함
+
+        ##################################### lgcn 임베딩 추가하는 부분
+
+        model = torch.load('../lightgcn/lightgcn_recbole/saved/lgcn-emb-64.pth')
+        self.user_embedding = torch.nn.Parameter(model['state_dict']['user_embedding.weight']) # #user_id
+        self.item_embedding = torch.nn.Parameter(model['state_dict']['item_embedding.weight']) # assessment_id
+
+        # 잘통과됨
+
         
-        self.has_cont_emb = self.args.n_cont_feat != 0
+        self.has_cont_emb = self.args.n_cont_feat != 0 ## type: boolean, continuous feature column exist or not
+
         emb_dim = self.hidden_dim if self.args.n_cont_feat == 0 else self.hidden_dim // 2
         
         self.embedding_cont_features = nn.Sequential(
@@ -127,6 +145,8 @@ class LSTMATTN(nn.Module):
                 nn.LayerNorm(emb_dim)
         )
         # embedding combination projection
+        # emb_dim = hidden_dim if cont_feat else hidden_dim // 2
+        # (len(self.args.n_embedding_layers)+1) -> feat_column의 feat 개수 + 1
         self.comb_proj = nn.Linear((self.hidden_dim//self.args.dim_div)*(len(self.args.n_embedding_layers)+1), emb_dim)
 
 
@@ -162,19 +182,31 @@ class LSTMATTN(nn.Module):
     def forward(self, input):
         cont_features, mask, interaction = input[-5:-2]
 
+        # cont_features.shape --> torch.Size([32, 100, 8(cont_feature 개수)])
+        # interaction --> torch.Size([32, 100])
         batch_size = interaction.size(0)
 
         # Embedding
-        embed_interaction = self.embedding_interaction(interaction)
+        embed_interaction = self.embedding_interaction(interaction) #embedding(3, 64/3:hidden_dim/dim_div)
         embed_features = []
-        for _input, _embedding_feature in zip(input[:-5], self.embedding_features):
+        for _input, _embedding_feature in zip(input[-5], self.embedding_features): # 짧은 길이 기준으로 움직임
+            # n_embedding_layers [14, 913, 1538, 10]
+            # self.embedding_features: list(embedding(# n_embedding_layers [14, 913, 1538, 10] + 1, hiddendim/dimdiv)
+            # 왜 cont_feature 를 cate_feat embedding 에 넣는지?
             value = _embedding_feature(_input)
             embed_features.append(value)
 
+
         embed_features = [embed_interaction] + embed_features
 
+
+
         embed = torch.cat(embed_features, 2)
-        X = self.comb_proj(embed)
+        X = self.comb_proj(embed)   # 임베딩 합치는 과정
+
+
+
+
 
         if self.has_cont_emb:
             cont_emb = self.embedding_cont_features(cont_features)

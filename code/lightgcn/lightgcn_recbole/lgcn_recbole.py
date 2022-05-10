@@ -27,6 +27,7 @@ config['show_progress'] = False
 config['device'] = "cuda" if torch.cuda.is_available() else "cpu"
 config['save_dataloaders'] = True
 config['save_dataset'] = True
+config['embedding_size'] = 85
 init_seed(config['seed'], config['reproducibility'])
 # logger initialization
 init_logger(config)

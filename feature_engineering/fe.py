@@ -200,7 +200,7 @@ df_test = df_test.sort_values(['userID', 'Timestamp'])
 df_train.fillna(0, inplace=True)
 df_test.fillna(0, inplace=True)
 
-df_train.to_csv('/opt/ml/input/data/train_FE.csv')
-df_test.to_csv('/opt/ml/input/data/test_FE.csv')
+df_train.to_csv('/tmp/pycharm_project_787/base/data/train_FE.csv')
+df_test.to_csv('/tmp/pycharm_project_787/base/data/test_FE.csv')
 
 print('Done!')
