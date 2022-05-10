@@ -478,10 +478,12 @@ def train(model, optimizer, train_loader, test_loader,validation_loader, mask, t
         #         early_stop_count += 1
         #         if early_stop_count == params['early_stop_epoch']:
         #             early_stop = True
-        
-        if epoch % 5 == 0 or epoch<=1:
-            inference(model, test_loader,user_mem,item_mem,epoch)
-            torch.save(model.state_dict(), params['model_save_path']+'256'+str(epoch))
+        #inference 항상 만들기
+        inference(model, test_loader,user_mem,item_mem,epoch)
+        torch.save(model.state_dict(), params['model_save_path']+'256'+str(epoch))        
+        # if epoch % 5 == 0 or epoch<=1:
+        #     inference(model, test_loader,user_mem,item_mem,epoch)
+        #     torch.save(model.state_dict(), params['model_save_path']+'256'+str(epoch))
         # if early_stop:
         #     print('##########################################')
         #     print('Early stop is triggered at {} epochs.'.format(epoch))
