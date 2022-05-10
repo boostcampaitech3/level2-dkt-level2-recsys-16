@@ -22,6 +22,7 @@
     - train.txt
     - user_list.txt
     - userilist.csv
+* neg_no_valid_inference.txt와 train_no_valid_inference_data.txt 파일면 변경 필요
 ## ultragcn_withvalid.py
 ---
 1. 파일 설정하기(경로 확인 필요시 경로 확인하기)

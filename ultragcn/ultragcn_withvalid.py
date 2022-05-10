@@ -459,35 +459,35 @@ def train(model, optimizer, train_loader, test_loader,validation_loader, mask, t
         if epoch % 5 != 0:
             need_val = False
         # if need_val:
-        if True:
-            start_time = time.time()
-            acc, auc, auc2 = validation(model, validation_loader, user_mem, val_item_mem, answercode, epoch)
-            if params['enable_tensorboard']:
-                writer.add_scalar('Results/acc', acc, epoch)
-                writer.add_scalar('Results/auc', auc, epoch)
-            test_time = time.strftime("%H: %M: %S", time.gmtime(time.time() - start_time))
+        # if True:
+        #     start_time = time.time()
+        #     acc, auc, auc2 = validation(model, validation_loader, user_mem, val_item_mem, answercode, epoch)
+        #     if params['enable_tensorboard']:
+        #         writer.add_scalar('Results/acc', acc, epoch)
+        #         writer.add_scalar('Results/auc', auc, epoch)
+        #     test_time = time.strftime("%H: %M: %S", time.gmtime(time.time() - start_time))
             
-            print('The time for epoch {} is: train time = {}, test time = {}'.format(epoch, train_time, test_time))
-            print("Loss = {:.5f}, acc: {:5f} \t auc: {:.5f}, auc2: {:.5f}".format(loss.item(), acc, auc, auc2))
+        #     print('The time for epoch {} is: train time = {}, test time = {}'.format(epoch, train_time, test_time))
+        #     print("Loss = {:.5f}, acc: {:5f} \t auc: {:.5f}, auc2: {:.5f}".format(loss.item(), acc, auc, auc2))
 
-            if acc > best_acc:
-                best_epoch, best_acc, best_auc = acc, auc, epoch
-                early_stop_count = 0   
+        #     if acc > best_acc:
+        #         best_epoch, best_acc, best_auc = acc, auc, epoch
+        #         early_stop_count = 0   
 
-            else:
-                early_stop_count += 1
-                if early_stop_count == params['early_stop_epoch']:
-                    early_stop = True
+        #     else:
+        #         early_stop_count += 1
+        #         if early_stop_count == params['early_stop_epoch']:
+        #             early_stop = True
         
         if epoch % 5 == 0 or epoch<=1:
             inference(model, test_loader,user_mem,item_mem,epoch)
             torch.save(model.state_dict(), params['model_save_path']+'256'+str(epoch))
-        if early_stop:
-            print('##########################################')
-            print('Early stop is triggered at {} epochs.'.format(epoch))
-            print('Results:')
-            print('best epoch = {}, best acc = {}, best auc = {}'.format(best_epoch, best_acc, best_auc))
-            break
+        # if early_stop:
+        #     print('##########################################')
+        #     print('Early stop is triggered at {} epochs.'.format(epoch))
+        #     print('Results:')
+        #     print('best epoch = {}, best acc = {}, best auc = {}'.format(best_epoch, best_acc, best_auc))
+        #     break
 
     writer.flush()
 
