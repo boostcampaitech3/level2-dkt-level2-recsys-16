@@ -22,7 +22,7 @@ class Preprocess:
     def get_test_data(self):
         return self.test_data
 
-    def split_data(self, data, ratio=0.7, shuffle=True, seed=0):
+    def split_data(self, data, ratio=0.7, shuffle=True, seed=42):
         """
         split data into two parts with a given ratio.
         """
@@ -71,8 +71,8 @@ class Preprocess:
 
     def __feature_engineering(self, df):
         self.args.USERID_COLUMN = ['userID']
-        self.args.FEAT_COLUMN = ['problem_num', 'KnowledgeTag', 'testId', 'class']
-        self.args.CONT_FEAT_COLUMN = ['user_knowledge_rate', 'user_acc', 'momentum', 'knowledge_rate', 'class_rate', 'assessment_rate', 'hour_rate','elapsed_rate']
+        self.args.FEAT_COLUMN = ['problem_num', 'KnowledgeTag', 'testId', 'class', 'elapsed']
+        self.args.CONT_FEAT_COLUMN = ['user_knowledge_rate', 'user_acc', 'momentum', 'knowledge_rate', 'class_rate', 'assessment_rate', 'hour_rate']
         # self.args.EXCLUDE_COLUMN = ['Timestamp','user_total_answer','user_correct_answer','momentum']
         self.args.ANSWER_COLUMN = ['answerCode']
 

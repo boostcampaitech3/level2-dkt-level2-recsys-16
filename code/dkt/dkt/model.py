@@ -100,19 +100,20 @@ class LSTMATTN(nn.Module):
         # interaction은 현재 correct로 구성되어있다. correct(1, 2) + padding(0)
         self.embedding_interaction = nn.Embedding(3, self.hidden_dim // self.args.dim_div)
         self.embedding_features = nn.ModuleList([])
-        for value in self.args.n_embedding_layers:
-            self.embedding_features.append(nn.Embedding(value + 1, self.hidden_dim // self.args.dim_div))
         
         self.has_cont_emb = self.args.n_cont_feat != 0
-        emb_dim = self.hidden_dim if self.args.n_cont_feat == 0 else self.hidden_dim // 2
+        emb_dim = self.hidden_dim if not self.has_cont_emb else self.hidden_dim // 2
+        self.batch_norm = nn.BatchNorm1d(self.args.n_cont_feat)
         
+        for value in self.args.n_embedding_layers:
+            self.embedding_features.append(nn.Embedding(value + 1, self.hidden_dim // args.dim_div))
+
         self.embedding_cont_features = nn.Sequential(
                 nn.Linear(self.args.n_cont_feat, emb_dim),
                 nn.LayerNorm(emb_dim)
         )
         # embedding combination projection
-        self.comb_proj = nn.Linear((self.hidden_dim//self.args.dim_div)*(len(self.args.n_embedding_layers)+1), emb_dim)
-
+        self.comb_proj = nn.Linear((self.hidden_dim//self.args.dim_div)*(len(self.args.n_embedding_layers)), emb_dim)
 
         self.lstm = nn.LSTM(
             self.hidden_dim, self.hidden_dim, self.n_layers, batch_first=True
@@ -155,13 +156,14 @@ class LSTMATTN(nn.Module):
             value = _embedding_feature(_input)
             embed_features.append(value)
 
-        embed_features = [embed_interaction] + embed_features
+        # embed_features = [embed_interaction] + embed_features
 
         embed = torch.cat(embed_features, 2)
         X = self.comb_proj(embed)
 
         if self.has_cont_emb:
-            cont_emb = self.embedding_cont_features(cont_features)
+            cont_norm = self.batch_norm(cont_features.transpose(1, 2)).transpose(1, 2)
+            cont_emb = self.embedding_cont_features(cont_norm)
             X = torch.cat([X, cont_emb], 2)
 
         hidden = self.init_hidden(batch_size)
@@ -209,7 +211,7 @@ class Bert(nn.Module):
                 nn.LayerNorm(emb_dim)
         )
         # embedding combination projection
-        self.comb_proj = nn.Linear((self.hidden_dim//self.args.dim_div)*(len(self.args.n_embedding_layers)+1), emb_dim)
+        self.comb_proj = nn.Linear((self.hidden_dim//self.args.dim_div)*(len(self.args.n_embedding_layers)), emb_dim)
 
         # Bert config
         self.config = BertConfig(
@@ -234,22 +236,24 @@ class Bert(nn.Module):
         batch_size = interaction.size(0)
 
         # 신나는 embedding
-        embed_interaction = self.embedding_interaction(interaction)
+        # embed_interaction = self.embedding_interaction(interaction)
 
         embed_features = []
         for _input, _embedding_feature in zip(input[:-5], self.embedding_features):
             value = _embedding_feature(_input)
             embed_features.append(value)
 
-        embed_features = [embed_interaction] + embed_features
+        # embed_features = [embed_interaction] + embed_features
+        embed_features = embed_features
 
         embed = torch.cat(embed_features, 2)
         X = self.comb_proj(embed)
 
         if self.has_cont_emb:
-            cont_emb = self.embedding_cont_features(cont_features)
+            cont_norm = self.batch_norm(cont_features.transpose(1, 2)).transpose(1, 2)
+            cont_emb = self.embedding_cont_features(cont_norm)
             X = torch.cat([X, cont_emb], 2)
-
+            
         # Bert
         encoded_layers = self.encoder(inputs_embeds=X, attention_mask=mask)
         out = encoded_layers[0]
