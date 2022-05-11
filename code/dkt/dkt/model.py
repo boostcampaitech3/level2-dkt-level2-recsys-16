@@ -39,12 +39,13 @@ class LSTM(nn.Module):
         emb_dim = self.hidden_dim if self.args.n_cont_feat == 0 else self.hidden_dim // 2
 
         self.embedding_cont_features = nn.Sequential(
-                nn.Linear(self.args.n_cont_feat, emb_dim),
-                nn.LayerNorm(emb_dim)
+            nn.Linear(self.args.n_cont_feat, emb_dim),
+            nn.LayerNorm(emb_dim)
         )
 
         # embedding combination projection
-        self.comb_proj = nn.Linear((self.hidden_dim//self.args.dim_div)*(len(self.args.n_embedding_layers)+1), emb_dim)
+        self.comb_proj = nn.Linear((self.hidden_dim // self.args.dim_div) * (len(self.args.n_embedding_layers) + 1),
+                                   emb_dim)
 
         self.lstm = nn.LSTM(
             self.hidden_dim, self.hidden_dim, self.n_layers, batch_first=True
@@ -66,11 +67,8 @@ class LSTM(nn.Module):
 
     def forward(self, input):
 
-       
-
         # *cate_features, cont_features, mask, interaction, gather_index, correct
         cont_features, mask, interaction = input[-5:-2]
-
 
         print(interaction)
         batch_size = interaction.size(0)
@@ -114,40 +112,40 @@ class LSTMATTN(nn.Module):
 
         # Embedding
         # interaction은 현재 correct로 구성되어있다. correct(1, 2) + padding(0)
-        self.embedding_interaction = nn.Embedding(3, self.hidden_dim // self.args.dim_div) # dim_div = 3 -> 1, 2, 0 세개?
-        print('embedding_interaction',self.embedding_interaction.weight)
+        # interaction 이 0, 1, 2 세개의 int 로만 구성되있어서
+        self.embedding_interaction = nn.Embedding(3, self.hidden_dim // self.args.dim_div)  # dim_div = 3
+        print('embedding_interaction', self.embedding_interaction.weight)
 
         # 왜 dim_div 로 나누지? embedding_features 가 4개인데
         self.embedding_features = nn.ModuleList([])
         # n_embedding_layers [14, 913, 1538, 10]
-        for value in self.args.n_embedding_layers: # Feat_column: len[class, knowledgetag, problem_num, testid]
+        for value in self.args.n_embedding_layers[:-2]:  # Feat_column: len[class, knowledgetag, problem_num, testid]
             self.embedding_features.append(nn.Embedding(value + 1, self.hidden_dim // self.args.dim_div))
 
+        model = torch.load('../lightgcn/lightgcn_recbole/saved/lgcn-emb-85.pth')
+        user_look = model['state_dict']['user_embedding.weight']
+        item_look = model['state_dict']['item_embedding.weight']
+        # 유저정보 아이템 정보 append
+
+        self.user_lookup = nn.Embedding.from_pretrained(user_look)
+        self.item_lookup = nn.Embedding.from_pretrained(item_look)
 
 
-        # 유저와 아이템 임베딩이 여기로 들어와서 틀을 추가해야 된다고 함
 
-        ##################################### lgcn 임베딩 추가하는 부분
-
-        model = torch.load('../lightgcn/lightgcn_recbole/saved/lgcn-emb-64.pth')
-        self.user_embedding = torch.nn.Parameter(model['state_dict']['user_embedding.weight']) # #user_id
-        self.item_embedding = torch.nn.Parameter(model['state_dict']['item_embedding.weight']) # assessment_id
-
-        # 잘통과됨
-
-        
-        self.has_cont_emb = self.args.n_cont_feat != 0 ## type: boolean, continuous feature column exist or not
+        self.has_cont_emb = self.args.n_cont_feat != 0  ## type: boolean, continuous feature column exist or not
 
         emb_dim = self.hidden_dim if self.args.n_cont_feat == 0 else self.hidden_dim // 2
-        
+
         self.embedding_cont_features = nn.Sequential(
-                nn.Linear(self.args.n_cont_feat, emb_dim),
-                nn.LayerNorm(emb_dim)
+            nn.Linear(self.args.n_cont_feat, emb_dim),
+            nn.LayerNorm(emb_dim)
         )
         # embedding combination projection
         # emb_dim = hidden_dim if cont_feat else hidden_dim // 2
         # (len(self.args.n_embedding_layers)+1) -> feat_column의 feat 개수 + 1
-        self.comb_proj = nn.Linear((self.hidden_dim//self.args.dim_div)*(len(self.args.n_embedding_layers)+1), emb_dim)
+        # RuntimeError: mat1 and mat2 shapes cannot be multiplied (3200x105 and 84x32)
+
+        self.comb_proj = nn.Linear((self.hidden_dim // self.args.dim_div) * (len(self.args.n_embedding_layers)), emb_dim)
 
 
         self.lstm = nn.LSTM(
@@ -170,6 +168,7 @@ class LSTMATTN(nn.Module):
 
         self.activation = nn.Sigmoid()
 
+
     def init_hidden(self, batch_size):
         h = torch.zeros(self.n_layers, batch_size, self.hidden_dim)
         h = h.to(self.device)
@@ -179,43 +178,65 @@ class LSTMATTN(nn.Module):
 
         return (h, c)
 
+
     def forward(self, input):
+
         cont_features, mask, interaction = input[-5:-2]
 
         # cont_features.shape --> torch.Size([32, 100, 8(cont_feature 개수)])
         # interaction --> torch.Size([32, 100])
+
         batch_size = interaction.size(0)
 
+
+
         # Embedding
-        embed_interaction = self.embedding_interaction(interaction) #embedding(3, 64/3:hidden_dim/dim_div)
+        # embed_interaction = self.embedding_interaction(interaction)  ##embedding(3, 64/3:hidden_dim/dim_div)
         embed_features = []
-        for _input, _embedding_feature in zip(input[-5], self.embedding_features): # 짧은 길이 기준으로 움직임
+
+
+
+        for _input, _embedding_feature in zip(input[:-7], self.embedding_features):  # 짧은 길이 기준으로 움직임
             # n_embedding_layers [14, 913, 1538, 10]
             # self.embedding_features: list(embedding(# n_embedding_layers [14, 913, 1538, 10] + 1, hiddendim/dimdiv)
-            # 왜 cont_feature 를 cate_feat embedding 에 넣는지?
+            # cate_feature 들을 cate_feat embedding 로 넣어서 씀 ok
             value = _embedding_feature(_input)
             embed_features.append(value)
 
+        user_order, item_order = input[-7], input[-6]
 
-        embed_features = [embed_interaction] + embed_features
+        embedded_user = self.user_lookup(user_order)
+        embedded_item = self.item_lookup(item_order)
 
 
+
+        embed_features = embed_features + [embedded_user] + [embedded_item] # 카테고리 피쳐 임베딩
+        # [torch.Size([32, 100, 21])...]
 
         embed = torch.cat(embed_features, 2)
-        X = self.comb_proj(embed)   # 임베딩 합치는 과정
+        # print(embed.shape)
+        # torch.Size([32, 100, 105])
+
+        X = self.comb_proj(embed)  # 카테고리 임베딩된 애들 Linear 통과 시켜  hidden dim 맞추기
+
+        # print(X.shape) torch.Size([32, 100, 32]) # cont feature가 있어서 embed 가 2로 나뉘어져서
 
 
-
-
-
-        if self.has_cont_emb:
+        if self.has_cont_emb: # continuous feature embedding
             cont_emb = self.embedding_cont_features(cont_features)
-            X = torch.cat([X, cont_emb], 2)
+            X = torch.cat([X, cont_emb], 2) # 카테고리 + continuous 임베딩 합치기
 
-        hidden = self.init_hidden(batch_size)
+        # print(X.shape) torch.Size([32, 100, 64])
+
+        # print(batch_size.shape)
+        hidden = self.init_hidden(batch_size) #(n_layers, batch_size, hidden_dim): ((1, 32, 64), (1, 32, 64))
+
+        X = X
+
         out, hidden = self.lstm(X, hidden)
         out = out.contiguous().view(batch_size, -1, self.hidden_dim)
 
+        # print(out.shape)
         extended_attention_mask = mask.unsqueeze(1).unsqueeze(2)
         extended_attention_mask = extended_attention_mask.to(dtype=torch.float32)
         extended_attention_mask = (1.0 - extended_attention_mask) * -10000.0
@@ -244,8 +265,6 @@ class Bert(nn.Module):
         # Embedding
         # interaction은 현재 correct으로 구성되어있다. correct(1, 2) + padding(0)
 
-
-
         self.embedding_interaction = nn.Embedding(3, self.hidden_dim // self.args.dim_div)
         self.embedding_features = nn.ModuleList([])
         for value in self.args.n_embedding_layers:
@@ -253,14 +272,15 @@ class Bert(nn.Module):
 
         self.has_cont_emb = self.args.n_cont_feat != 0
         emb_dim = self.hidden_dim if self.args.n_cont_feat == 0 else self.hidden_dim // 2
-        
+
         self.embedding_cont_features = nn.Sequential(
-                nn.Linear(self.args.n_cont_feat, emb_dim),
-                nn.LayerNorm(emb_dim)
+            nn.Linear(self.args.n_cont_feat, emb_dim),
+            nn.LayerNorm(emb_dim)
 
         )
         # embedding combination projection
-        self.comb_proj = nn.Linear((self.hidden_dim//self.args.dim_div)*(len(self.args.n_embedding_layers)+1), emb_dim)
+        self.comb_proj = nn.Linear((self.hidden_dim // self.args.dim_div) * (len(self.args.n_embedding_layers) + 1),
+                                   emb_dim)
 
         # Bert config
         self.config = BertConfig(
@@ -335,16 +355,21 @@ class LGBM:
         model = lgb.train(  # args 로 받게끔 하는 부분
             params={'objective': 'binary',
                     'metric': ['binary_logloss', 'auc'],
-                    'boosting': self.args.boosting, #'dart', # default: gbdt(gradient boosting decision tree)
-                    'max_depth': self.args.max_dep, #12, # handle overfitting, lowering will do, 3~12 recommended
-                    'num_leaves': self.args.num_leaves, #512, # default: 31
-                    'min_data_in_leaf': self.args.mdil, #200, # handle overfitting, minimum number of records a leaf may have
-                    'feature_fraction': self.args.ff, #0.8, # randomly choose fraction of parameters when building tree in each iteration
-                    'bagging_fraction': self.args.bf, #0.8, # use fraction of data for each iteration, speed up and avoid overfitting
-                    'lambda': self.args.lmda, #0.2, # specifies regularization
-                    'min_gain_to_split': self.args.mgts, #20, # describe the minimum gain to make a split, used to control number of useful splits in tree
-                    'max_cat_group': self.args.mcg, #64, #When the number of category is large, finding the split point on it is easily over-fitting
-                    'tree_learner': self.args.tl #'feature',  # default: serial, [data, feature]
+                    'boosting': self.args.boosting,  # 'dart', # default: gbdt(gradient boosting decision tree)
+                    'max_depth': self.args.max_dep,  # 12, # handle overfitting, lowering will do, 3~12 recommended
+                    'num_leaves': self.args.num_leaves,  # 512, # default: 31
+                    'min_data_in_leaf': self.args.mdil,
+                    # 200, # handle overfitting, minimum number of records a leaf may have
+                    'feature_fraction': self.args.ff,
+                    # 0.8, # randomly choose fraction of parameters when building tree in each iteration
+                    'bagging_fraction': self.args.bf,
+                    # 0.8, # use fraction of data for each iteration, speed up and avoid overfitting
+                    'lambda': self.args.lmda,  # 0.2, # specifies regularization
+                    'min_gain_to_split': self.args.mgts,
+                    # 20, # describe the minimum gain to make a split, used to control number of useful splits in tree
+                    'max_cat_group': self.args.mcg,
+                    # 64, #When the number of category is large, finding the split point on it is easily over-fitting
+                    'tree_learner': self.args.tl  # 'feature',  # default: serial, [data, feature]
                     },
             train_set=lgb_train,
             valid_sets=[lgb_train, lgb_test],  # 자동으로 훈련데이터는 빼고 나머지를 모두 사용해 valid
@@ -375,7 +400,6 @@ class LGBM:
         model.save_model(os.path.join(output_dir, self.args.model_name))
         print('model saved!')
 
-
     def infer(self):
         output_dir = 'lgbm-model/'
         model = lgb.Booster(model_file=os.path.join(output_dir, self.args.model_name))  # 모델 불러오기
@@ -397,7 +421,7 @@ class LGBM:
 
         # SAVE OUTPUT
         output_dir = 'lgbm-output/'
-        write_path = os.path.join(output_dir, self.args.model_name.split('.')[0]+'_submission.csv')
+        write_path = os.path.join(output_dir, self.args.model_name.split('.')[0] + '_submission.csv')
         if not os.path.exists(output_dir):
             os.makedirs(output_dir)
         with open(write_path, 'w', encoding='utf8') as w:

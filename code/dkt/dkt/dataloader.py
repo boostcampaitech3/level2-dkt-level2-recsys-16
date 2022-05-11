@@ -22,7 +22,7 @@ class Preprocess:
     def get_test_data(self):
         return self.test_data
 
-    def split_data(self, data, ratio=0.7, shuffle=True, seed=0):
+    def split_data(self, data, ratio=0.85, shuffle=True, seed=0):
         """
         split data into two parts with a given ratio.
         """
@@ -47,9 +47,12 @@ class Preprocess:
             os.makedirs(self.args.asset_dir)
 
         for col in cate_cols:
-
             le = LabelEncoder()
-            if is_train:
+
+            if col in ['user_order', 'item_order']:
+                continue
+
+            elif is_train:
                 # For UNKNOWN class
                 a = df[col].unique().tolist() + ["unknown"]
                 le.fit(a)
@@ -63,16 +66,25 @@ class Preprocess:
                 )
 
             # 모든 컬럼이 범주형이라고 가정
+            # print(df[col])
             df[col] = df[col].astype(str)
             test = le.transform(df[col])
             df[col] = test
-
+            # print(df[col])
+            # cate_col 의 item 개수만큼 좁혀서 정수로 뱉어주는 구간
+            # user_id 와 assessment_id 는 order 를 사용해서 정수로 뱉어서 넣어줄수 잇음
         return df
 
     def __feature_engineering(self, df):
         self.args.USERID_COLUMN = ['userID']
-        self.args.FEAT_COLUMN = ['problem_num', 'KnowledgeTag', 'testId', 'class'] # __preprocessing 대수
-        self.args.CONT_FEAT_COLUMN = ['user_knowledge_rate', 'user_acc', 'momentum', 'knowledge_rate', 'class_rate', 'assessment_rate', 'hour_rate','elapsed_rate']
+
+        ##### 'userID' 대신에 다른 피쳐로 붙여야 댐, 'assessmentID' 대신에도 다른걸로 붙여놓아용
+        ##### nn.Embbedding_from_pretrained 를 사용해서 lookup_table의 순서에 맞추어 embbedding 을 가져오는 식으로 짜고 싶다
+        # self.args.FEAT_COLUMN = ['problem_num', 'KnowledgeTag', 'testId', 'class'] # , 'user_order', 'assessmentID_order'
+        self.args.FEAT_COLUMN = ['testId', 'KnowledgeTag', 'user_order', 'item_order'] # 순서 두개를 넣고
+
+        # self.args.CONT_FEAT_COLUMN = ['user_knowledge_rate', 'user_acc', 'momentum', 'knowledge_rate', 'class_rate', 'assessment_rate', 'hour_rate','elapsed_rate']
+        self.args.CONT_FEAT_COLUMN = [] # 값은 유지되서 그대로 넘겨지는 부분
         # self.args.EXCLUDE_COLUMN = ['Timestamp','user_total_answer','user_correct_answer','momentum']
         self.args.ANSWER_COLUMN = ['answerCode']
 
@@ -89,6 +101,8 @@ class Preprocess:
         return df
 
     def df_to_tuple(self, r):
+        # print(r)
+        # userid별로 끊어서 df가 r 로 넘어옴 (user의 iteraction 개수 x columns들의 개수 합) -> (a, 14)
         return [r[x].values for x in self.args.FEAT_COLUMN] \
                + [r[x].values for x in self.args.CONT_FEAT_COLUMN] \
                + [r[x].values for x in self.args.ANSWER_COLUMN]
@@ -96,6 +110,27 @@ class Preprocess:
     def load_data_from_file(self, file_name, is_train=True):
         csv_file_path = os.path.join(self.args.data_dir, file_name)
         df = pd.read_csv(csv_file_path)
+
+        user = pd.read_csv(os.path.join(self.args.data_dir, self.args.user_emb))
+        item = pd.read_csv(os.path.join(self.args.data_dir, self.args.item_emb))
+
+        print(item.columns)
+
+        ## process_batch-> masking 예외처리 부분
+        item = item[['assessmentItemID', 'order']]
+        item['order'] = item['order'] - 1
+
+        user = user[['userID', 'order']]
+        user['order'] = user['order'] - 1
+
+
+        df = df.merge(item, on=['assessmentItemID'])
+        df = df.merge(user, on=['userID'])
+
+
+        df.columns = list(df.columns)[:-2] + ['item_order','user_order']
+        # --------------
+
 
         df = self.__feature_engineering(df)
         print(f'after __feature_engineering\n{df.head()}')
@@ -106,25 +141,25 @@ class Preprocess:
         self.args.n_embedding_layers = []
 
         # asset 가져오고
-        for val in self.args.FEAT_COLUMN:
+        for val in self.args.FEAT_COLUMN[:-2]:
             self.args.n_embedding_layers.append(len(np.load(os.path.join(self.args.asset_dir, val+'_classes.npy'))))
 
-        # n_embedding_layers [14, 913, 1538, 10]
+        # print(self.args.n_embedding_layers) # [1538, 913]
 
+        # print(df)
         # df 불러올때 순서대로 안불리는 경우 있어서
         df = df.sort_values(by=["userID", "Timestamp"], axis=0)
-
+        # print(df)
         columns = self.args.USERID_COLUMN + self.args.FEAT_COLUMN \
                   + self.args.CONT_FEAT_COLUMN + self.args.ANSWER_COLUMN
 
         group = df[columns].groupby('userID').apply(self.df_to_tuple)
 
-        # 이거 한번 찍어보자
-        # print(group.values)
-        # print(len(group.values)) #22046
-        # print(group.values[0])
-        # print(len(group.values[0])) # 13
-        return group.values
+        # print(len(group[0])) #3 ( feat col 2개 + answer 1개 )
+        # print(len(group[1])) #3
+        # print(len(group.values)) # 7442 유저 id 별로 따라감
+
+        return group.values  # 여기까지는 아직 embedding 되지 않음
 
     def load_train_data(self, file_name):
         self.train_data = self.load_data_from_file(file_name)

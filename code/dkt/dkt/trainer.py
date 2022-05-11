@@ -31,6 +31,8 @@ def run(args, train_data, valid_data):
 
     best_auc = -1
     early_stopping_counter = 0
+
+    # --- 여기 이전 단계들은 한번만 수행된다는 것: 여기 이전단계에서 임베딩을 끝냇어야 된다는 것.
     for epoch in range(args.n_epochs):
 
         print(f"Start Training: Epoch {epoch + 1}")
@@ -143,10 +145,11 @@ def train(train_loader, model, optimizer, scheduler, args):
 
         preds = model(input) # lstmattn forward
 
+
         targets = input[-1]  # correct
 
         loss = compute_loss(preds, targets)
-        update_params(loss, model, optimizer, scheduler, args)
+        update_params(loss, model, optimizer, scheduler, args) # 파라미터 업데이트 하는 부분
 
         if step % args.log_steps == 0:
             print(f"Training steps: {step} Loss: {str(loss.item())}")
@@ -265,14 +268,17 @@ def get_model(args):
 
 
 # 배치 전처리 -> 어떻게 나오는지
+# 여기서 처리를 하래
 def process_batch(batch, args):
-    # print('batch_len',len(batch)) --> 14
+    # print('batch_len',len(batch)) # 4
     # batch : type -> list
-    # args.n_cate_feat: cate feat 개수 = 4
-    # print('batch[0]', batch[0].shape) -> torch.size([32, 100])
+    # print('batch[0]', batch[0].shape)#-> torch.size([32, 100])
+    # DKTDataset 처리를 거친 상태의 batch
+
+
 
     cate_features = batch[:args.n_cate_feat]
-    cont_features = batch[args.n_cate_feat:-2] # 8, 32, 100
+    cont_features = batch[args.n_cate_feat:-2]
     mask = batch[-2]
     correct = batch[-1]
 
@@ -284,6 +290,8 @@ def process_batch(batch, args):
 
     # interaction을 임시적으로 correct를 한칸 우측으로 이동한 것으로 사용
     # print(correct.shape) --> torch.Size([32, 100])
+
+
 
     interaction = correct + 1  # 패딩을 위해 correct값에 1을 더해준다.
     interaction = interaction.roll(shifts=1, dims=1)

@@ -23,7 +23,7 @@ def parse_args(mode="train"):
     #
 
     parser.add_argument(
-        "--file_name", default="train_FE.csv", type=str, help="train file name"
+        "--file_name", default="train_test_sum.csv", type=str, help="train file name"
     )
 
     parser.add_argument(
@@ -40,7 +40,15 @@ def parse_args(mode="train"):
         "--output_name", default="submission.csv", type=str, help="output submission name"
     )
     parser.add_argument(
-        "--test_file_name", default="test_FE.csv", type=str, help="test file name"
+        "--test_file_name", default="test_data.csv", type=str, help="test file name"
+    )
+
+    # 임베딩 유저 아이템 부분
+    parser.add_argument(
+        "--user_emb", default="user_recbole.csv", type=str, help="user_emb file"
+    )
+    parser.add_argument(
+        "--item_emb", default="assessment_recbole.csv", type=str, help="item_emb file"
     )
 
     parser.add_argument(
@@ -50,7 +58,7 @@ def parse_args(mode="train"):
 
     # 모델
     parser.add_argument(
-        "--hidden_dim", default=64, type=int, help="hidden dimension size"
+        "--hidden_dim", default=256, type=int, help="hidden dimension size"
     )
     parser.add_argument("--n_layers", default=1, type=int, help="number of layers")
     parser.add_argument("--n_heads", default=8, type=int, help="number of heads")
@@ -62,7 +70,7 @@ def parse_args(mode="train"):
     parser.add_argument("--batch_size", default=32, type=int, help="batch size")
     parser.add_argument("--lr", default=0.00005, type=float, help="learning rate")
     parser.add_argument("--clip_grad", default=10, type=int, help="clip grad")
-    parser.add_argument("--patience", default=5, type=int, help="for early stopping")
+    parser.add_argument("--patience", default=10, type=int, help="for early stopping")
 
     parser.add_argument(
         "--log_steps", default=50, type=int, help="print log per n steps"
@@ -72,7 +80,7 @@ def parse_args(mode="train"):
     parser.add_argument("--model", default="lstmattn", type=str, help="model type")
     parser.add_argument("--optimizer", default="adam", type=str, help="optimizer type")
     parser.add_argument(
-        "--scheduler", default="plateau", type=str, help="scheduler type"
+        "--scheduler", default="linear_warmup", type=str, help="scheduler type"
     )
 
 
