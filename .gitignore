@@ -141,3 +141,7 @@ data/
 # Output file
 **/output/*
 *.csv
+dkt_ii_constraint_mat
+dkt_ii_neighbor_mat
+ultragcn_dkt.pt*
+events.out.tfevents*
