@@ -1,4 +1,4 @@
-# RecSys16(사분의 오) DKT 프로젝트 저장소
+# RecSys16(사분의 오) DKT(Deep Knowledge Tracing)
 ![image](./images/dkt.png)
 
 ## 프로젝트 소개
