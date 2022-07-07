@@ -3,7 +3,7 @@
 
 ## 프로젝트 소개
 ### 개요
-프로젝트는 주어진 Iscream Edu Dataset의 유저별 마지막 문제의 정오 유무를 예측하는 것이다. Dataset은 Train set과 Test
+프로젝트는 주어진 Iscream Edu Dataset의 유저별 마지막 문제의 정오를 예측하는 것이다. Dataset은 Train set과 Test
 set으로 구성되어 있으며, 약 226만 개의 데이터가 사용자를 기준으로 90/10의 비율로 나누어져 있다. Dataset의 메인 정
 보로는 7,442 명의 사용자(userID)와 9,454개의 고유 문항(assessment ID)의 정오 유무(answerCode)가 있으며, feature
 engineering에 활용될 수 있는 부가 정보로는 3가지로 timestamp(문제를 풀기 시작한 시각), knowledgeTag(고유 태그 번
@@ -21,8 +21,7 @@ GBM(Gradient Boosting Machine) 프레임워크로 Tree 기반 학습 알고리�
 categorical & numeric data를 input으로 하는 End to End 딥러닝 모델인 Tabnet을 이용해 다양한 실험을 진행했다.
 ["KnowledgeTag", 'assessmentItemID' , "class", "elapsed", "momentum", "user_acc", ‘class_acc']의 총 7개 column을 활용하고
 cat_dim=256, mask_type=entmax로 지정했을 때 최종 성적 기준 가장 좋은 성능을 보였는데, validation과 LB 성적 간에 차이
-가 있어 최종 제출로 선택하지 못했다. Test data가 총 744개의 row를 가지는 만큼 CV 전략이 중요했던 것 같은데 이를 제
-대로 구현하지 못해 아쉬움이 남는다.
+가 있어 최종 제출로 선택하지 못했다. Test data가 총 744개의 row를 가지는 만큼 CV 전략이 중요했던 것 같은데 이를 제대로 구현하지 못해 아쉬움이 남는다.
 #### [UltraGCN](https://github.com/xue-pai/UltraGCN)
 UltraGCN의 속도는 LightGCN에 비해 빠르고 성능이 좋다고 알려져 있어, 문제 제작자의 의도대로 UltraGCN 모델을 <참
 고 자료 1>을 활용하여 만들었다. 모델에서 1은 그래프를 연결한 것이고, 0은 그래프를 연결하지 않은 것을 의미하였다.
@@ -31,7 +30,7 @@ UltraGCN의 속도는 LightGCN에 비해 빠르고 성능이 좋다고 알려져
 #### Bert
 베이스라인의 Bert 모델에 Ultragcn을 통해 학습시킨 user와 item embedding을 추가해 학습을 진행하고, pseudo labeling
 을 적용한 test data만을 활용해 3epoch의 추가 학습을 시도했다. 양방향 학습을 하는 Bert 외에 단방향 학습을 하는
-transformer를 활용하는 시도를 추가로 했다면 좋았을 것 같다
+transformer를 활용하는 시도를 추가로 했다면 좋았을 것 같다.
 #### LSTM-attention 및 Saint
 기존에 baseline에 있는 LSTM-Attn은 LSTM을 사용한 RNN 구조 이후에 transformer의 encoder 구조만을 사용하지만,
 Saint는 transformer로 정답률을 예측하는 모델이다<Image 4-6>. 두 모델 모두 embedding vector를 생성하는 과정은 동
@@ -54,8 +53,8 @@ Attn이 더 좋은 성능을 보여주었다(LSTM-Attn: 0.7601, Saint: 0.7400). 
 
 |리더보드| auroc  |     순위     |
 |:--------:|:------:|:----------:|
-|public| 0.8186 |  **11등**   |
-|private| 0.8214 | **최종 12등** |
+|public| 0.8186 |  **11위**   |
+|private| 0.8214 | **최종 12위** |
 
 ![image](./images/private.png)
 
