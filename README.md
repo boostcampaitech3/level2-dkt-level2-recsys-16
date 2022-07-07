@@ -48,7 +48,7 @@ Attn이 더 좋은 성능을 보여주었다(LSTM-Attn: 0.7601, Saint: 0.7400). 
 |                             [ 구창회 ](https://github.com/sonyak-ku)                              |                             [ 김지원 ](https://github.com/Jiwon1729)                              |                              [ 전민규 ](https://github.com/alsrb0607)                             |                              [ 정준우 ](https://github.com/ler0n)                             |
 |                                              
 
-```
+
 
 ## 최종 순위 및 결과
 
