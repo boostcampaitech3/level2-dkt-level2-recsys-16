@@ -46,7 +46,7 @@ Attn이 더 좋은 성능을 보여주었다(LSTM-Attn: 0.7601, Saint: 0.7400). 
 | [ ![구창회](https://avatars.githubusercontent.com/u/63918561?v=4) ](https://github.com/sonyak-ku) | [ ![김지원](https://avatars.githubusercontent.com/u/97625330?v=4) ](https://github.com/Jiwon1729) | [ ![전민규](https://avatars.githubusercontent.com/u/85151359?v=4) ](https://github.com/alsrb0607) | [ ![정준우](https://avatars.githubusercontent.com/u/39089969?v=4) ](https://github.com/ler0n) |
 |:----------------------------------------------------------------------------------------------:|:----------------------------------------------------------------------------------------------:|:-------------------------------------------------------------------------------------------------:|:---------------------------------------------------------------------------------------------:|
 |                             [ 구창회 ](https://github.com/sonyak-ku)                              |                             [ 김지원 ](https://github.com/Jiwon1729)                              |                              [ 전민규 ](https://github.com/alsrb0607)                             |                              [ 정준우 ](https://github.com/ler0n)                             |
-|                                              
+|                              3-4주차 PM, LGBM, LightGCN embedding LSTM-attn 연결                             |                     1-2주차 PM, Ultragcn modeling, Rank based Ensemble, 실험 결과 예측                    |                               Tabnet, data augmentation, voting ensemble                  |                  LSTM-attn 개선, Feature Engineering        |                              
 
 
 
@@ -58,3 +58,6 @@ Attn이 더 좋은 성능을 보여주었다(LSTM-Attn: 0.7601, Saint: 0.7400). 
 |private| 0.8214 | **최종 12등** |
 
 ![image](./images/private.png)
+
+## 참고자료
+- [Wrap-Up Report](https://ring-sorrel-f4b.notion.site/DKT-Wrap-Up-Report-419054748c934acb85c2d356e78bdb98)
