@@ -4,18 +4,17 @@
 ## 프로젝트 소개
 ### 개요
 프로젝트는 주어진 Iscream Edu Dataset의 유저별 마지막 문제의 정오를 예측하는 것이다. Dataset은 Train set과 Test
-set으로 구성되어 있으며, 약 226만 개의 데이터가 사용자를 기준으로 90/10의 비율로 나누어져 있다. Dataset의 메인 정
-보로는 7,442 명의 사용자(userID)와 9,454개의 고유 문항(assessment ID)의 정오 유무(answerCode)가 있으며, feature
-engineering에 활용될 수 있는 부가 정보로는 3가지로 timestamp(문제를 풀기 시작한 시각), knowledgeTag(고유 태그 번
-호), TestID(시험지 번호)로 구성되어 있다.
+set으로 구성되어 있으며, 약 226만 개의 데이터가 사용자를 기준으로 90/10의 비율로 나누어져 있다. Dataset의 메인 정보로는
+7,442 명의 사용자(userID)와 9,454개의 고유 문항(assessment ID)의 정오(answerCode)가 있으며, 
+부가 정보로는 3가지로 timestamp(문제를 풀기 시작한 시각), knowledgeTag(고유 태그 번호), TestID(시험지 번호)로 구성되어 있다.
 
 
 ### 사용 모델
 #### [LGBM](https://lightgbm.readthedocs.io/en/latest/)
 GBM(Gradient Boosting Machine) 프레임워크로 Tree 기반 학습 알고리즘이며 Kaggle 데이터 분석대회에서 많은 우승을
 하였다. 이번 대회는 많은 feature 들을 만들고 이러한 feature가 문제풀이에 유의미한 영향을 주는지 파악하
-는 것이 중요하다고 생각하여, LGBM 이 제공하는 feature_importance라는 기능을 사용하고자 LGBM을 학습해보았다. 하지
-만, 하나의 새로운 feature 가 들어가면 이전까지의 실험으로 중요하다고 여겨졌던 feature의 중요도가 갑자기 낮아지는
+는 것이 중요하다고 생각하여, LGBM이 제공하는 feature_importance라는 기능을 사용하고자 LGBM을 학습해보았다. 하지만, 
+하나의 새로운 feature 가 들어가면 이전까지의 실험으로 중요하다고 여겨졌던 feature의 중요도가 갑자기 낮아지는
 것을 확인한 뒤에 이 방법으로는 feature들의 중요도를 일관적으로 확인할 수 없겠다고 판단하였다.
 #### [Tabnet](https://github.com/dreamquark-ai/tabnet)
 categorical & numeric data를 input으로 하는 End to End 딥러닝 모델인 Tabnet을 이용해 다양한 실험을 진행했다.
