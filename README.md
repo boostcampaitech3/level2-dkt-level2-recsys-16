@@ -8,45 +8,46 @@ set으로 구성되어 있으며, 약 226만 개의 데이터가 사용자를 �
 보로는 7,442 명의 사용자(userID)와 9,454개의 고유 문항(assessment ID)의 정오 유무(answerCode)가 있으며, feature
 engineering에 활용될 수 있는 부가 정보로는 3가지로 timestamp(문제를 풀기 시작한 시각), knowledgeTag(고유 태그 번
 호), TestID(시험지 번호)로 구성되어 있다
-### 데이터 수집 및 생성
-#### 수집
-구글 설문을 이용해 188개의 이미지를 수집했고, 7개를 제외하고 학습에 52개는 학습 과정에서 활용하고 129개는 모델 성능 평가에 활용했다.
-#### 생성
-필수정보(한글 이름, 직책과 소속), 부가정보(전화번호, 팩스번호, 핸드폰번호, 이메일, 주소), 그 외의 정보(회사명, 영어이름, 웹 주소, 로고, 구분자)를 랜덤으로 생성 후, 제작한 형식에 맞춰 명함 이미지를 생성했다. 명함 이미지에 사용한 정보들은 BIO Tag를 함께 생성하여 AI 모델 학습에 사용했다.
-<img src="md_res/1.png" width="500">
-### 모델
-Rule 기반 모델과 AI 모델을 각각 제작해 두 모델의 성능을 평가하고, 각각의 장단점을 확인하였다.
-<img src="md_res/2.png" width="500">
-#### Rule 기반 모델
-OCR API 결과에서 텍스트들을 grouping하는 과정을 거친 후, 각 텍스트의 카테고리를 분류하는 모델을 개발했다. 카테고리 사이의 간격이 짧다면 다른 카테고리의 단어가 묶인 경우에는 묶인 단어의 일부가 한 카테고리에 해당되면 다른 부분을 다시 Rule 기반 모델로 검사하는 반복 작업을 만들어 해결하였다.
-#### AI(KoBERT) 기반 모델
-OCR API로 추출한 텍스트들을 한 줄로 직렬화하고, 각 텍스트에 대해서 미리 정의한 카테고리로 분류하는 문제로 접근할 수 있다고 생각해 개체명 인식(NER; Named Entity Recognition)으로 해결하기 위해 모델을 설계했다. 개체명 인식 문제로 해결하는 방식 중 보편적인 BIO Tagging 방식을 채택했고, 분류 태그는 총 9개 태그로 구분하도록 했다.
 
-<img src="md_res/3.png" width="200">
 
-### 성능 평가 및 비교
-평가 지표는 OCR API의 오류를 감안해 CER 기준 0.2 내의 오차는 수용하는 보정된 F1 score를 사용했다.
+### 사용 모델
+#### [LGBM](https://lightgbm.readthedocs.io/en/latest/)
+GBM(Gradient Boosting Machine) 프레임워크로 Tree 기반 학습 알고리즘이다. Kaggle 데이터 분석대회에서 많은 우승을
+따낸 알고리즘이다. 이번 대회는 많은 feature 들을 만들고 이러한 feature가 문제풀이에 유의미한 영향을 주는지 파악하
+는 것이 중요하다고 생각하여, LGBM 이 제공하는 feature_importance라는 기능을 사용하고자 LGBM을 학습해보았다. 하지
+만, 하나의 새로운 feature 가 들어가면 이전까지의 실험으로 중요하다고 여겨졌던 feature의 중요도가 갑자기 낮아지는
+것을 확인한 뒤에 이 방법으로는 feature들의 중요도를 일관적으로 확인할 수 없겠다고 판단하였다.
+#### [Tabnet](https://github.com/dreamquark-ai/tabnet)
+categorical & numeric data를 input으로 하는 End to End 딥러닝 모델인 Tabnet을 이용해 다양한 실험을 진행했다.
+["KnowledgeTag", 'assessmentItemID' , "class", "elapsed", "momentum", "user_acc", ‘class_acc']의 총 7개 column을 활용하고
+cat_dim=256, mask_type=entmax로 지정했을 때 최종 성적 기준 가장 좋은 성능을 보였는데, validation과 LB 성적 간에 차이
+가 있어 최종 제출로 선택하지 못했다. Test data가 총 744개의 row를 가지는 만큼 CV 전략이 중요했던 것 같은데 이를 제
+대로 구현하지 못해 아쉬움이 남는다.
+#### [UltraGCN](https://github.com/xue-pai/UltraGCN)
+UltraGCN의 속도는 LightGCN에 비해 빠르고 성능이 좋다고 알려져 있어, 문제 제작자의 의도대로 UltraGCN 모델을 <참
+고 자료 1>을 활용하여 만들었다. 모델에서 1은 그래프를 연결한 것이고, 0은 그래프를 연결하지 않은 것을 의미하였다.
+따라서, negative sampling이 기존에는 random하게 추출하는 것이었지만, 현재 상황에서 negative한 정보는 answerCode가
+0인 경우이므로 negative sampling을 answerCode가 0인 부분에서 추출하는 것으로 변경한 결과 성능 향상을 이루었다.
+#### Bert
+베이스라인의 Bert 모델에 Ultragcn을 통해 학습시킨 user와 item embedding을 추가해 학습을 진행하고, pseudo labeling
+을 적용한 test data만을 활용해 3epoch의 추가 학습을 시도했다. 양방향 학습을 하는 Bert 외에 단방향 학습을 하는
+transformer를 활용하는 시도를 추가로 했다면 좋았을 것 같다
+#### LSTM-attention 및 Saint
+기존에 baseline에 있는 LSTM-Attn은 LSTM을 사용한 RNN 구조 이후에 transformer의 encoder 구조만을 사용하지만,
+Saint는 transformer로 정답률을 예측하는 모델이다<Image 4-6>. 두 모델 모두 embedding vector를 생성하는 과정은 동
+일했다. 범주형 feature들은 각각의 embedding 과정을 거치고, 연속형 feature들은 Linear 연산 이후에 하나의 vector로
+합친 이후에 hidden dimension으로 변환시키는 Linear 연산을 실행했다<Image 4-7>. 두 모델을 실험해본 결과 LSTM-
+Attn이 더 좋은 성능을 보여주었다(LSTM-Attn: 0.7601, Saint: 0.7400). 데이터의 개수가 부족해 transformer 구조로는 학습
+이 제대로 되지 않아 생긴 현상이라고 생각된다.
+![image](./images/lstm.png)
 
-<img src="md_res/4.png" width="200">
 
-### 서비스 시연
-<img src="md_res/5.png" width="500">
-
-## 팀 역할
+## 팀원
 | [ ![구창회](https://avatars.githubusercontent.com/u/63918561?v=4) ](https://github.com/sonyak-ku) | [ ![김지원](https://avatars.githubusercontent.com/u/97625330?v=4) ](https://github.com/Jiwon1729) | [ ![전민규](https://avatars.githubusercontent.com/u/85151359?v=4) ](https://github.com/alsrb0607) | [ ![정준우](https://avatars.githubusercontent.com/u/39089969?v=4) ](https://github.com/ler0n) |
 |:----------------------------------------------------------------------------------------------:|:----------------------------------------------------------------------------------------------:|:-------------------------------------------------------------------------------------------------:|:---------------------------------------------------------------------------------------------:|
 |                             [ 구창회 ](https://github.com/sonyak-ku)                              |                             [ 김지원 ](https://github.com/Jiwon1729)                              |                              [ 전민규 ](https://github.com/alsrb0607)                             |                              [ 정준우 ](https://github.com/ler0n)                             |
-|                             LGBM, LightGCN embedding LSTM-attn 연결                              |                        Ultragcn, Rank based Ensemble, 실험 결과 예측 code 작성                         |                               Tabnet, data augmentation, voting ensemble                              |                                LSTM-attn 개선, Feature Engineering 진행                                
+|                                              
 
-## Repo 구조
-
-```
-ai_model # AI 모델 구현 관련 폴더
-├─ dataset.py
-├─ model.py
-├─ main.py
-├─ utils.py
-└─ ner_utils.py
 ```
 
 ## 최종 순위 및 결과
