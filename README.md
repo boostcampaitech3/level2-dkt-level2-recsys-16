@@ -4,9 +4,9 @@
 ## 프로젝트 소개
 ### 개요
 프로젝트는 주어진 Iscream Edu Dataset의 유저별 마지막 문제의 정오를 예측하는 것이다. Dataset은 Train set과 Test
-set으로 구성되어 있으며, 약 226만 개의 데이터가 사용자를 기준으로 90/10의 비율로 나누어져 있다. Dataset의 메인 정보로는
-7,442 명의 사용자(userID)와 9,454개의 고유 문항(assessment ID)의 정오(answerCode)가 있으며, 
-부가 정보로는 3가지로 timestamp(문제를 풀기 시작한 시각), knowledgeTag(고유 태그 번호), TestID(시험지 번호)로 구성되어 있다.
+set으로 구성되어 있으며, 약 226만 개의 데이터가 사용자를 기준으로 90/10의 비율로 나누어져 있다. Dataset의 Column으로는
+7,442 명의 사용자(userID)와 9,454개의 고유 문항(assessment ID)의 정오(answerCode), timestamp(문제를 풀기 시작한 시각), knowledgeTag(고유 태그 번호), 
+TestID(시험지 번호)가 있었다.
 
 
 ### 사용 모델
